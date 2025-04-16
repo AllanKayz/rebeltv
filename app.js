@@ -2,6 +2,7 @@
 const videoPlayer = document.getElementById('video-player');
 const loadChannelsBtn = document.getElementById('load-channels-btn');
 const channelList = document.getElementById('channel-list');
+const channelCount = document.getElementById('channel-count');
 const newStreamUrlInput = document.getElementById('new-stream-url');
 const addStreamBtn = document.getElementById('add-stream-btn');
 
@@ -22,54 +23,92 @@ function playChannel(url) {
   }
 }
 
-// Function to render the channel list
-// Function to render the channel list
+// Function to render the enriched channel list with logo, name, and language
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
   channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   // Clear existing channels
-  const channelList = document.getElementById('channel-list');
-  const channelCount = document.getElementById('channel-count');
   channelList.innerHTML = '';
 
-  // Render sorted channels
+  // Render each channel
   channels.forEach((channel) => {
-    const listItem = document.createElement('li');
-    listItem.className = 'mb-2 flex justify-between items-center';
+    const channelCard = document.createElement('div');
+    channelCard.className = 'flex items-center mb-4 p-2 border rounded shadow';
 
-    const channelLink = document.createElement('button');
-    channelLink.textContent = channel.name || 'Unknown Channel';
-    channelLink.className = 'text-blue-500 hover:underline';
-    channelLink.addEventListener('click', () => playChannel(channel.url));
+    // Channel logo
+    if (channel.logo) {
+      const logo = document.createElement('img');
+      logo.src = channel.logo;
+      logo.alt = `${channel.name} Logo`;
+      logo.className = 'w-12 h-12 mr-4 rounded';
+      channelCard.appendChild(logo);
+    }
 
-    listItem.appendChild(channelLink);
-    channelList.appendChild(listItem);
+    // Channel details
+    const details = document.createElement('div');
+    details.className = 'flex-1';
+
+    const name = document.createElement('h3');
+    name.textContent = channel.name || 'Unknown Channel';
+    name.className = 'font-semibold text-lg';
+
+    const language = document.createElement('p');
+    language.textContent = `Language: ${channel.language || 'Unknown'}`;
+    language.className = 'text-gray-600 text-sm';
+
+    const playButton = document.createElement('button');
+    playButton.textContent = 'Play';
+    playButton.className = 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600';
+    playButton.addEventListener('click', () => playChannel(channel.url));
+
+    details.appendChild(name);
+    details.appendChild(language);
+    details.appendChild(playButton);
+
+    channelCard.appendChild(details);
+    channelList.appendChild(channelCard);
   });
 
   // Update the channel count
   channelCount.textContent = channels.length;
 }
 
-// Fetch channels from the IPTV streams JSON and render them
-loadChannelsBtn.addEventListener('click', () => {
-  fetch('https://iptv-org.github.io/api/streams.json')
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then((data) => {
-      // Filter channels with valid URLs and render them
-      const validChannels = data.filter((channel) => channel.url);
-      renderChannelList(validChannels);
-    })
-    .catch((error) => {
-      console.error('Error fetching channels:', error);
-      alert('Failed to load channel list. Please try again.');
-    });
-});
+// Fetch channels and match them with feeds and channel details
+async function loadAndDisplayChannels() {
+  try {
+    // Fetch data from APIs
+    const [streams, feeds, channels] = await Promise.all([
+      fetch('https://iptv-org.github.io/api/streams.json').then((res) => res.json()),
+      fetch('https://iptv-org.github.io/api/feeds.json').then((res) => res.json()),
+      fetch('https://iptv-org.github.io/api/channels.json').then((res) => res.json()),
+    ]);
+
+    // Enrich streams with feed and channel details
+    const enrichedChannels = streams
+      .map((stream) => {
+        const feed = feeds.find((f) => f.id === stream.channel);
+        const channel = channels.find((c) => c.id === stream.channel);
+
+        if (feed && channel) {
+          return {
+            name: channel.name,
+            logo: channel.logo,
+            language: feed.language,
+            url: stream.url,
+          };
+        }
+        return null; // Exclude mismatched entries
+      })
+      .filter((channel) => channel !== null); // Remove null entries
+
+    // Render enriched channels
+    renderChannelList(enrichedChannels);
+  } catch (error) {
+    console.error('Error loading channels:', error);
+    alert('Failed to load channels. Please try again.');
+  }
+}
 
 // Add and play a new stream
 addStreamBtn.addEventListener('click', () => {
@@ -80,11 +119,14 @@ addStreamBtn.addEventListener('click', () => {
     return;
   }
 
-  // Play the new stream
+  // Play the new stream directly
   playChannel(url);
 
-  // Optionally, add the new stream to the list (temporary)
-  const newChannel = { name: `Custom Stream`, url: url };
+  // Add the new stream temporarily to the list
+  const newChannel = { name: 'Custom Stream', logo: null, language: 'Unknown', url: url };
   renderChannelList([newChannel]);
   newStreamUrlInput.value = '';
 });
+
+// Load channels on button click
+loadChannelsBtn.addEventListener('click', loadAndDisplayChannels);
