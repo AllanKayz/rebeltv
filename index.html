@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,41 +6,73 @@
   <title>REBELTV Streaming App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    /* Ensure the app takes full screen height */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    /* Custom styling for the container to fit the screen */
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* Full height */
+    }
+
+    /* Make the channel list scrollable and fit available space */
+    #channel-list {
+      overflow-y: auto;
+      flex: 1; /* Takes remaining space */
+    }
+
+    video {
+      max-height: 60vh; /* Restrict video height to make room for other elements */
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
-  <div class="w-full max-w-3xl bg-white rounded-lg shadow-md p-6">
-    <h1 class="text-2xl font-bold text-center mb-6">REBELTV Streaming App</h1>
+<body class="bg-gray-100">
+  <div id="app-container" class="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md">
+    <!-- App Title -->
+    <header class="p-4 bg-blue-500 text-white text-center">
+      <h1 class="text-2xl font-bold">REBELTV Streaming App</h1>
+    </header>
 
-    <!-- Add Stream Section -->
-    <div class="mb-4">
-      <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
-      <input 
-        id="new-stream-url" 
-        type="text" 
-        placeholder="e.g., https://example.com/stream.m3u8" 
-        class="w-full border border-gray-300 rounded-lg p-2 mb-2" />
+    <!-- Main Content -->
+    <main class="flex flex-col flex-grow p-4">
+      <!-- Add Stream Section -->
+      <div class="mb-4">
+        <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
+        <input 
+          id="new-stream-url" 
+          type="text" 
+          placeholder="e.g., https://example.com/stream.m3u8" 
+          class="w-full border border-gray-300 rounded-lg p-2 mb-2" />
+        <button 
+          id="add-stream-btn" 
+          class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition">
+          Add & Play Stream
+        </button>
+      </div>
+
+      <!-- Video Player -->
+      <div class="mb-4">
+        <video id="video-player" class="w-full rounded-lg bg-black" controls></video>
+      </div>
+
+      <!-- Load Channels Button -->
       <button 
-        id="add-stream-btn" 
-        class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition">
-        Add & Play Stream
+        id="load-channels-btn" 
+        class="w-full bg-green-500 text-white font-bold py-2 px-4 mb-4 rounded hover:bg-green-600 transition">
+        Load FREE TV Channels
       </button>
-    </div>
 
-    <!-- Video Player -->
-    <div class="mb-4">
-      <video id="video-player" class="w-full rounded-lg bg-black" controls></video>
-    </div>
-
-    <!-- Load Channels Button -->
-    <button 
-      id="load-channels-btn" 
-      class="w-full bg-green-500 text-white font-bold py-2 px-4 mb-4 rounded hover:bg-green-600 transition">
-      Load FREE TV Channels
-    </button>
-
-    <!-- Channels List -->
-    <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-    <div id="channel-list" class="overflow-y-auto max-h-96"></div>
+      <!-- Channels List -->
+      <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
+      <div id="channel-list" class="overflow-y-auto max-h-96">
+        <!-- Channels with name, URL, and language will be dynamically populated -->
+      </div>
+    </main>
   </div>
 
   <script src="app.js"></script>
