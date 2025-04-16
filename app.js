@@ -26,7 +26,7 @@ function playChannel(url) {
 // Function to render the channel list with name and URL
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
-  channels.sort((a, b) => (a.channel || '').localeCompare(b.channel || ''));
+  channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   // Clear existing channels
   channelList.innerHTML = '';
@@ -38,7 +38,7 @@ function renderChannelList(channels) {
 
     // Channel details
     const name = document.createElement('h3');
-    name.textContent = `Name: ${channel.channel || 'Unknown Channel'}`;
+    name.textContent = `Name: ${channel.name || 'Unknown Channel'}`;
     name.className = 'font-semibold text-lg';
 
     const playButton = document.createElement('button');
@@ -61,8 +61,14 @@ async function loadAndDisplayChannels() {
     // Fetch streams data
     const streams = await fetch('https://iptv-org.github.io/api/streams.json').then((res) => res.json());
 
-    // Render channels directly
-    renderChannelList(streams);
+    // Enrich streams with default values if necessary
+    const enrichedChannels = streams.map((stream) => ({
+      name: stream.channel || 'Unknown Channel',
+      url: stream.url,
+    }));
+
+    // Render enriched channels
+    renderChannelList(enrichedChannels);
   } catch (error) {
     console.error('Error loading channels:', error);
     alert('Failed to load channels. Please try again.');
@@ -82,7 +88,7 @@ addStreamBtn.addEventListener('click', () => {
   playChannel(url);
 
   // Add the new stream temporarily to the list
-  const newChannel = { channel: 'Custom Stream', url: url };
+  const newChannel = { name: 'Custom Stream', url: url };
   renderChannelList([newChannel]);
   newStreamUrlInput.value = '';
 });
