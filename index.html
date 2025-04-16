@@ -7,34 +7,41 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    /* Ensure the app takes full screen height */
     html, body {
       height: 100%;
       margin: 0;
     }
 
-    /* Container for full-screen layout */
     #app-container {
       display: flex;
       flex-direction: column;
-      height: 100%; /* Full height */
+      height: 100%;
     }
 
-    /* Make the channel list scrollable and fit available space */
     #channel-list {
       overflow-y: auto;
-      flex: 1; /* Takes remaining space */
+      flex: 1;
     }
 
-    /* Restrict video height to make room for other elements */
     video {
       max-height: 60vh;
     }
 
-    /* Inline input and button styling */
-    .inline-input-btn {
+    .channel-card {
       display: flex;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      border: 1px solid #e5e7eb; /* Light gray border */
+      border-radius: 0.375rem;
+      background-color: #f9fafb; /* Light background */
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+      transition: background-color 0.3s ease, transform 0.2s;
+    }
+
+    .channel-card:hover {
+      background-color: #f3f4f6; /* Slightly darker background on hover */
+      transform: scale(1.02); /* Slightly larger on hover */
     }
 
     .icon-btn {
@@ -63,7 +70,7 @@
       <!-- Add Stream Section -->
       <div class="mb-4">
         <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
-        <div class="inline-input-btn">
+        <div class="inline-input-btn flex gap-2">
           <input 
             id="new-stream-url" 
             type="text" 
@@ -80,6 +87,16 @@
         </div>
       </div>
 
+      <!-- Search Section -->
+      <div class="mb-4">
+        <label for="search-channels" class="block text-sm font-medium text-gray-700 mb-2">Search Channels</label>
+        <input 
+          id="search-channels" 
+          type="text" 
+          placeholder="Search channel by name..." 
+          class="w-full border border-gray-300 rounded-lg p-2" />
+      </div>
+
       <!-- Video Player -->
       <div class="mb-4">
         <video id="video-player" class="w-full rounded-lg bg-black" controls></video>
@@ -94,7 +111,9 @@
 
       <!-- Channels List -->
       <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-      <div id="channel-list" class="overflow-y-auto max-h-96"></div>
+      <div id="channel-list" class="overflow-y-auto max-h-96">
+        <!-- Channels will be dynamically populated -->
+      </div>
     </main>
   </div>
 
