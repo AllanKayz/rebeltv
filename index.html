@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IPTV Streaming App</title>
+  <title>REBELTV Streaming App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -11,20 +11,20 @@
   <div class="w-full max-w-3xl bg-white rounded-lg shadow-md p-6">
     <h1 class="text-2xl font-bold text-center mb-6">REBELTV Streaming App</h1>
 
-<!-- Add Stream Section -->
-<div class="mb-4">
-  <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
-  <input 
-    id="new-stream-url" 
-    type="text" 
-    placeholder="e.g., https://example.com/stream.m3u8" 
-    class="w-full border border-gray-300 rounded-lg p-2 mb-2" />
-  <button 
-    id="add-stream-btn" 
-    class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition">
-    Add & Play Stream
-  </button>
-</div>
+    <!-- Add Stream Section -->
+    <div class="mb-4">
+      <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
+      <input 
+        id="new-stream-url" 
+        type="text" 
+        placeholder="e.g., https://example.com/stream.m3u8" 
+        class="w-full border border-gray-300 rounded-lg p-2 mb-2" />
+      <button 
+        id="add-stream-btn" 
+        class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition">
+        Add & Play Stream
+      </button>
+    </div>
 
     <!-- Video Player -->
     <div class="mb-4">
@@ -38,12 +38,11 @@
       Load FREE TV Channels
     </button>
 
-
-<!-- Channels List -->
-<h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-<div id="channel-list" class="overflow-y-auto max-h-96">
-  <!-- Channels with name, logo, and language will be dynamically populated -->
-</div>
+    <!-- Channels List -->
+    <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
+    <div id="channel-list" class="overflow-y-auto max-h-96">
+      <!-- Channels with name, URL, and language will be dynamically populated -->
+    </div>
   </div>
 
   <script src="app.js"></script>
