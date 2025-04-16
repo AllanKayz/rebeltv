@@ -2,6 +2,8 @@
 const videoPlayer = document.getElementById('video-player');
 const loadChannelsBtn = document.getElementById('load-channels-btn');
 const channelList = document.getElementById('channel-list');
+const newStreamUrlInput = document.getElementById('new-stream-url');
+const addStreamBtn = document.getElementById('add-stream-btn');
 
 // Function to initialize the video player with HLS.js
 function playChannel(url) {
@@ -20,14 +22,12 @@ function playChannel(url) {
   }
 }
 
-
 // Function to render the channel list
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
   channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   // Clear existing channels
-  const channelList = document.getElementById('channel-list');
   channelList.innerHTML = '';
 
   // Render sorted channels
@@ -63,4 +63,22 @@ loadChannelsBtn.addEventListener('click', () => {
       console.error('Error fetching channels:', error);
       alert('Failed to load channel list. Please try again.');
     });
+});
+
+// Add and play a new stream
+addStreamBtn.addEventListener('click', () => {
+  const url = newStreamUrlInput.value.trim();
+
+  if (!url) {
+    alert('Please enter a valid stream URL.');
+    return;
+  }
+
+  // Play the new stream
+  playChannel(url);
+
+  // Optionally, add the new stream to the list (temporary)
+  const newChannel = { name: `Custom Stream`, url: url };
+  renderChannelList([newChannel]);
+  newStreamUrlInput.value = '';
 });
