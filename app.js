@@ -23,11 +23,14 @@ function playChannel(url) {
 }
 
 // Function to render the channel list
+// Function to render the channel list
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
   channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   // Clear existing channels
+  const channelList = document.getElementById('channel-list');
+  const channelCount = document.getElementById('channel-count');
   channelList.innerHTML = '';
 
   // Render sorted channels
@@ -43,6 +46,9 @@ function renderChannelList(channels) {
     listItem.appendChild(channelLink);
     channelList.appendChild(listItem);
   });
+
+  // Update the channel count
+  channelCount.textContent = channels.length;
 }
 
 // Fetch channels from the IPTV streams JSON and render them
