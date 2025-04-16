@@ -20,10 +20,17 @@ function playChannel(url) {
   }
 }
 
+
 // Function to render the channel list
 function renderChannelList(channels) {
-  channelList.innerHTML = ''; // Clear existing channels
+  // Sort channels alphabetically by name
+  channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
+  // Clear existing channels
+  const channelList = document.getElementById('channel-list');
+  channelList.innerHTML = '';
+
+  // Render sorted channels
   channels.forEach((channel) => {
     const listItem = document.createElement('li');
     listItem.className = 'mb-2 flex justify-between items-center';
