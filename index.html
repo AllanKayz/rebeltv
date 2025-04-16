@@ -7,52 +7,54 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    /* Ensure the app takes full screen height */
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-
-    /* Custom styling for the container to fit the screen */
-    #app-container {
+    /* Custom styles to align input and button inline */
+    .inline-input-btn {
       display: flex;
-      flex-direction: column;
-      height: 100%; /* Full height */
+      align-items: center;
+      gap: 8px;
     }
 
-    /* Make the channel list scrollable and fit available space */
-    #channel-list {
-      overflow-y: auto;
-      flex: 1; /* Takes remaining space */
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      background-color: #3b82f6; /* Blue color */
+      color: white;
+      transition: background-color 0.3s;
     }
 
-    video {
-      max-height: 60vh; /* Restrict video height to make room for other elements */
+    .icon-btn:hover {
+      background-color: #2563eb; /* Darker blue on hover */
     }
   </style>
 </head>
 <body class="bg-gray-100">
   <div id="app-container" class="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md">
-    <!-- App Title -->
     <header class="p-4 bg-blue-500 text-white text-center">
       <h1 class="text-2xl font-bold">REBELTV Streaming App</h1>
     </header>
 
-    <!-- Main Content -->
     <main class="flex flex-col flex-grow p-4">
       <!-- Add Stream Section -->
       <div class="mb-4">
         <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
-        <input 
-          id="new-stream-url" 
-          type="text" 
-          placeholder="e.g., https://example.com/stream.m3u8" 
-          class="w-full border border-gray-300 rounded-lg p-2 mb-2" />
-        <button 
-          id="add-stream-btn" 
-          class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition">
-          Add & Play Stream
-        </button>
+        <div class="inline-input-btn">
+          <input 
+            id="new-stream-url" 
+            type="text" 
+            placeholder="e.g., https://example.com/stream.m3u8" 
+            class="w-full border border-gray-300 rounded-lg p-2" />
+          <button 
+            id="add-stream-btn" 
+            class="icon-btn">
+            <!-- Icon for the button -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Video Player -->
@@ -69,9 +71,7 @@
 
       <!-- Channels List -->
       <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-      <div id="channel-list" class="overflow-y-auto max-h-96">
-        <!-- Channels with name, URL, and language will be dynamically populated -->
-      </div>
+      <div id="channel-list" class="overflow-y-auto max-h-96"></div>
     </main>
   </div>
 
