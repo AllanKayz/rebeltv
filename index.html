@@ -7,10 +7,33 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    /* Custom styles to align input and button inline */
+    /* Ensure the app takes full screen height */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    /* Container for full-screen layout */
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* Full height */
+    }
+
+    /* Make the channel list scrollable and fit available space */
+    #channel-list {
+      overflow-y: auto;
+      flex: 1; /* Takes remaining space */
+    }
+
+    /* Restrict video height to make room for other elements */
+    video {
+      max-height: 60vh;
+    }
+
+    /* Inline input and button styling */
     .inline-input-btn {
       display: flex;
-      align-items: center;
       gap: 8px;
     }
 
