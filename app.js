@@ -71,21 +71,17 @@ async function loadAndDisplayChannels() {
     ]);
 
     // Enrich streams with feed and channel details
-    const enrichedChannels = streams
-      .map((stream) => {
-        const feed = feeds.find((f) => f.id === stream.channel);
-        const channel = channels.find((c) => c.id === stream.channel);
+    const enrichedChannels = streams.map((stream) => {
+      const feed = feeds.find((f) => f.id === stream.channel);
+      const channel = channels.find((c) => c.id === stream.channel);
 
-        if (feed && channel) {
-          return {
-            name: channel.name,
-            language: feed.language,
-            url: stream.url,
-          };
-        }
-        return null; // Exclude mismatched entries
-      })
-      .filter((channel) => channel !== null); // Remove null entries
+      // Include unmatched channels with default values
+      return {
+        name: channel ? channel.name : 'Unknown Channel',
+        language: feed ? feed.language : 'Unknown',
+        url: stream.url,
+      };
+    });
 
     // Render enriched channels
     renderChannelList(enrichedChannels);
