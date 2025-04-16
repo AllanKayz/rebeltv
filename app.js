@@ -23,7 +23,7 @@ function playChannel(url) {
   }
 }
 
-// Function to render the enriched channel list with logo, name, and language
+// Function to render the channel list with name, URL, and language
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
   channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -34,23 +34,11 @@ function renderChannelList(channels) {
   // Render each channel
   channels.forEach((channel) => {
     const channelCard = document.createElement('div');
-    channelCard.className = 'flex items-center mb-4 p-2 border rounded shadow';
-
-    // Channel logo
-    if (channel.logo) {
-      const logo = document.createElement('img');
-      logo.src = channel.logo;
-      logo.alt = `${channel.name} Logo`;
-      logo.className = 'w-12 h-12 mr-4 rounded';
-      channelCard.appendChild(logo);
-    }
+    channelCard.className = 'flex flex-col mb-4 p-2 border rounded shadow';
 
     // Channel details
-    const details = document.createElement('div');
-    details.className = 'flex-1';
-
     const name = document.createElement('h3');
-    name.textContent = channel.name || 'Unknown Channel';
+    name.textContent = `Name: ${channel.name || 'Unknown Channel'}`;
     name.className = 'font-semibold text-lg';
 
     const language = document.createElement('p');
@@ -58,15 +46,13 @@ function renderChannelList(channels) {
     language.className = 'text-gray-600 text-sm';
 
     const playButton = document.createElement('button');
-    playButton.textContent = 'Play';
-    playButton.className = 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600';
+    playButton.textContent = 'Play Stream';
+    playButton.className = 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2';
     playButton.addEventListener('click', () => playChannel(channel.url));
 
-    details.appendChild(name);
-    details.appendChild(language);
-    details.appendChild(playButton);
-
-    channelCard.appendChild(details);
+    channelCard.appendChild(name);
+    channelCard.appendChild(language);
+    channelCard.appendChild(playButton);
     channelList.appendChild(channelCard);
   });
 
@@ -93,7 +79,6 @@ async function loadAndDisplayChannels() {
         if (feed && channel) {
           return {
             name: channel.name,
-            logo: channel.logo,
             language: feed.language,
             url: stream.url,
           };
@@ -123,7 +108,7 @@ addStreamBtn.addEventListener('click', () => {
   playChannel(url);
 
   // Add the new stream temporarily to the list
-  const newChannel = { name: 'Custom Stream', logo: null, language: 'Unknown', url: url };
+  const newChannel = { name: 'Custom Stream', language: 'Unknown', url: url };
   renderChannelList([newChannel]);
   newStreamUrlInput.value = '';
 });
