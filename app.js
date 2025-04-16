@@ -23,7 +23,7 @@ function playChannel(url) {
   }
 }
 
-// Function to render the channel list with name, URL, and language
+// Function to render the channel list with name and URL
 function renderChannelList(channels) {
   // Sort channels alphabetically by name
   channels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -41,17 +41,12 @@ function renderChannelList(channels) {
     name.textContent = `Name: ${channel.name || 'Unknown Channel'}`;
     name.className = 'font-semibold text-lg';
 
-    const language = document.createElement('p');
-    language.textContent = `Language: ${channel.language || 'Unknown'}`;
-    language.className = 'text-gray-600 text-sm';
-
     const playButton = document.createElement('button');
     playButton.textContent = 'Play Stream';
     playButton.className = 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2';
     playButton.addEventListener('click', () => playChannel(channel.url));
 
     channelCard.appendChild(name);
-    channelCard.appendChild(language);
     channelCard.appendChild(playButton);
     channelList.appendChild(channelCard);
   });
@@ -60,28 +55,17 @@ function renderChannelList(channels) {
   channelCount.textContent = channels.length;
 }
 
-// Fetch channels and match them with feeds and channel details
+// Fetch channels from the Streams JSON API and render them
 async function loadAndDisplayChannels() {
   try {
-    // Fetch data from APIs
-    const [streams, feeds, channels] = await Promise.all([
-      fetch('https://iptv-org.github.io/api/streams.json').then((res) => res.json()),
-      fetch('https://iptv-org.github.io/api/feeds.json').then((res) => res.json()),
-      fetch('https://iptv-org.github.io/api/channels.json').then((res) => res.json()),
-    ]);
+    // Fetch streams data
+    const streams = await fetch('https://iptv-org.github.io/api/streams.json').then((res) => res.json());
 
-    // Enrich streams with feed and channel details
-    const enrichedChannels = streams.map((stream) => {
-      const feed = feeds.find((f) => f.id === stream.channel);
-      const channel = channels.find((c) => c.id === stream.channel);
-
-      // Include unmatched channels with default values
-      return {
-        name: channel ? channel.name : 'Unknown Channel',
-        language: feed ? feed.language : 'Unknown',
-        url: stream.url,
-      };
-    });
+    // Enrich streams with default values if necessary
+    const enrichedChannels = streams.map((stream) => ({
+      name: stream.channel || 'Unknown Channel',
+      url: stream.url,
+    }));
 
     // Render enriched channels
     renderChannelList(enrichedChannels);
@@ -104,7 +88,7 @@ addStreamBtn.addEventListener('click', () => {
   playChannel(url);
 
   // Add the new stream temporarily to the list
-  const newChannel = { name: 'Custom Stream', language: 'Unknown', url: url };
+  const newChannel = { name: 'Custom Stream', url: url };
   renderChannelList([newChannel]);
   newStreamUrlInput.value = '';
 });
