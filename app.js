@@ -79,6 +79,9 @@ async function loadAndDisplayChannels() {
   }
 }
 
+// Automatically load channels when the app initializes
+loadAndDisplayChannels();
+
 // Add and play a new stream
 addStreamBtn.addEventListener('click', () => {
   const url = newStreamUrlInput.value.trim();
