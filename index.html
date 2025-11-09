@@ -8,121 +8,392 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
     html, body {
       height: 100%;
       margin: 0;
-      background-color: #111827; /* Dark background */
+    }
+
+    body.dark {
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+
+    body.light {
+      background-color: #f8fafc;
+      color: #0f172a;
     }
 
     #app-container {
       display: flex;
       flex-direction: column;
-      height: 100%;
-      max-width: 1200px;
-      margin: auto;
-    }
-
-    #channel-list {
-      flex-grow: 1;
-      overflow-y: auto;
+      min-height: 100vh;
     }
 
     video {
       width: 100%;
-      border-radius: 0.5rem;
+      border-radius: 0.75rem;
       background-color: #000;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
 
     .channel-card {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 0.75rem;
-      border-radius: 0.375rem;
-      background-color: #1f2937; /* Darker card background */
-      transition: background-color 0.3s ease;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark .channel-card {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+    }
+
+    .light .channel-card {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
     }
 
     .channel-card:hover {
-      background-color: #374151; /* Hover effect */
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .dark .channel-card:hover {
+      background-color: #334155;
+      border-color: #475569;
+    }
+
+    .light .channel-card:hover {
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .channel-card.active {
+      border: 2px solid #3b82f6;
     }
 
     .channel-logo {
-      width: 40px;
-      height: 40px;
-      margin-right: 0.75rem;
-      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      margin-right: 1rem;
+      border-radius: 0.5rem;
       object-fit: cover;
+      flex-shrink: 0;
     }
 
-    .icon-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.5rem;
-      border-radius: 0.375rem;
-      background-color: transparent;
-      color: #9ca3af;
-      transition: color 0.3s;
+    .dark .input-field {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
     }
 
-    .icon-btn:hover {
+    .light .input-field {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .theme-toggle {
+      width: 60px;
+      height: 30px;
+      background-color: #475569;
+      border-radius: 15px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .theme-toggle-slider {
+      width: 26px;
+      height: 26px;
+      background-color: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s ease;
+    }
+
+    .theme-toggle.active .theme-toggle-slider {
+      transform: translateX(30px);
+    }
+
+    .light .theme-toggle {
+      background-color: #fbbf24;
+    }
+
+    #video-container {
+      position: relative;
+    }
+
+    .video-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 1.5rem;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      border-radius: 0 0 0.75rem 0.75rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .dark .badge-live {
+      background-color: #dc2626;
       color: white;
+    }
+
+    .light .badge-live {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .dark .scrollbar-thin::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    .light .scrollbar-thin::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+
+    .light .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .dark .modal-bg {
+      background-color: #1e293b;
+    }
+
+    .light .modal-bg {
+      background-color: #ffffff;
+    }
+
+    @media (max-width: 768px) {
+      #main-content {
+        flex-direction: column;
+      }
+      
+      #video-section {
+        order: 1;
+      }
+      
+      #channels-section {
+        order: 2;
+      }
     }
   </style>
 </head>
-<body class="text-white">
+<body class="dark">
   <div id="app-container">
-    <header class="p-4 text-center">
-      <h1 class="text-3xl font-bold"><i class="fas fa-satellite-dish mr-2"></i>REBELTV</h1>
-    </header>
-
-    <div id="main-content" class="p-4 flex flex-col md:flex-row flex-grow overflow-hidden">
-      <div id="left-panel" class="w-full md:w-2/5 flex flex-col">
-        <div class="relative mb-4">
-          <input 
-            id="search-channels"
-            type="text" 
-            placeholder="Search channel..."
-            class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 pl-10" />
-          <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-        </div>
-        <div class="mb-4">
-          <label for="new-stream-url" class="block text-sm font-medium text-gray-400 mb-2">Add New Stream URL</label>
-          <div class="flex gap-2">
-            <input
-              id="new-stream-url"
-              type="text"
-              placeholder="e.g., https://example.com/stream.m3u8"
-              class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2" />
-            <button
-              id="add-stream-btn"
-              class="icon-btn bg-blue-500 hover:bg-blue-600 text-white">
-              <i class="fas fa-plus"></i>
-            </button>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 backdrop-blur-lg border-b" style="background-color: rgba(15, 23, 42, 0.8);">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center space-x-3">
+            <i class="fas fa-tv text-3xl text-blue-500"></i>
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">REBELTV</h1>
+          </div>
+          
+          <div class="flex items-center space-x-4">
+            <span class="text-sm hidden sm:inline" id="theme-label">Dark Mode</span>
+            <div class="theme-toggle" id="theme-toggle">
+              <div class="theme-toggle-slider"></div>
+            </div>
           </div>
         </div>
-        <h2 class="text-xl font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-        <div id="channel-list">
-          <!-- Channels dynamically populated -->
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div id="main-content" class="flex flex-col lg:flex-row gap-6">
+        
+        <!-- Video Section -->
+        <div id="video-section" class="w-full lg:w-2/3">
+          <div id="video-container" class="rounded-xl overflow-hidden">
+            <video id="video-player" controls></video>
+            <div class="video-overlay hidden" id="video-info">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="badge badge-live"><i class="fas fa-circle text-xs mr-1"></i>LIVE</span>
+                  <h3 class="text-xl font-bold mt-2 text-white" id="current-channel-name">Select a channel</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Now Playing Info Card -->
+          <div class="mt-4 p-4 rounded-lg" id="now-playing-card" style="display: none;">
+            <h3 class="font-semibold text-lg mb-2">Now Playing</h3>
+            <p class="text-sm opacity-75" id="now-playing-description">Select a channel to start streaming</p>
+          </div>
+        </div>
+
+        <!-- Channels Section -->
+        <div id="channels-section" class="w-full lg:w-1/3 flex flex-col">
+          <!-- Search Bar -->
+          <div class="relative mb-4">
+            <input 
+              id="search-channels"
+              type="text" 
+              placeholder="Search channels..."
+              class="w-full input-field rounded-lg p-3 pl-10" />
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+
+          <!-- Add Stream -->
+          <div class="mb-4 p-4 rounded-lg border" id="add-stream-container">
+            <label class="block text-sm font-semibold mb-2">
+              <i class="fas fa-plus-circle mr-2"></i>Add New Stream
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="new-stream-url"
+                type="text"
+                placeholder="https://example.com/stream.m3u8"
+                class="flex-1 input-field rounded-lg p-2 text-sm" />
+              <button
+                id="add-stream-btn"
+                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Channel List -->
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold">
+              Channels (<span id="channel-count">0</span>)
+            </h2>
+          </div>
+          
+          <div id="channel-list" class="space-y-2 overflow-y-auto scrollbar-thin pr-2" style="max-height: 600px;">
+            <!-- Channels dynamically populated -->
+          </div>
         </div>
       </div>
+    </main>
 
-      <div id="right-panel" class="w-full md:w-3/5 mt-4 md:mt-0 md:pl-6">
-        <video id="video-player" controls></video>
+    <!-- Footer -->
+    <footer class="mt-auto border-t py-4">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm opacity-60">
+        <p>&copy; 2025 REBELTV. All rights reserved.</p>
       </div>
-    </div>
+    </footer>
   </div>
 
   <!-- EPG Modal -->
-  <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden">
-    <div class="bg-gray-800 p-6 rounded-lg max-w-lg w-full">
-      <h2 class="text-2xl font-bold mb-4" id="epg-channel-name"></h2>
-      <div id="epg-guide" class="overflow-y-auto max-h-96"></div>
-      <button id="close-epg-modal" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
+  <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="modal-bg p-6 rounded-xl max-w-2xl w-full mx-4 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold" id="epg-channel-name"></h2>
+        <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="epg-guide" class="overflow-y-auto scrollbar-thin" style="max-height: 400px;"></div>
     </div>
   </div>
 
   <script src="app.js"></script>
+  <script>
+    // Theme Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeLabel = document.getElementById('theme-label');
+    const body = document.body;
+    const header = document.querySelector('header');
+    const footer = document.querySelector('footer');
+    const addStreamContainer = document.getElementById('add-stream-container');
+    const nowPlayingCard = document.getElementById('now-playing-card');
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = body.classList.contains('dark') ? 'dark' : 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+      localStorage.setItem('theme', newTheme);
+    });
+
+    function setTheme(theme) {
+      if (theme === 'light') {
+        body.classList.remove('dark');
+        body.classList.add('light');
+        themeToggle.classList.add('active');
+        themeLabel.textContent = 'Light Mode';
+        header.style.backgroundColor = 'rgba(248, 250, 252, 0.8)';
+        header.classList.remove('border-b');
+        header.style.borderBottom = '1px solid #e2e8f0';
+        footer.style.borderTop = '1px solid #e2e8f0';
+        addStreamContainer.style.borderColor = '#e2e8f0';
+        addStreamContainer.style.backgroundColor = '#ffffff';
+        if (nowPlayingCard.style.display !== 'none') {
+          nowPlayingCard.style.backgroundColor = '#ffffff';
+          nowPlayingCard.style.border = '1px solid #e2e8f0';
+        }
+      } else {
+        body.classList.remove('light');
+        body.classList.add('dark');
+        themeToggle.classList.remove('active');
+        themeLabel.textContent = 'Dark Mode';
+        header.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
+        header.style.borderBottom = '1px solid #334155';
+        footer.style.borderTop = '1px solid #334155';
+        addStreamContainer.style.borderColor = '#334155';
+        addStreamContainer.style.backgroundColor = '#1e293b';
+        if (nowPlayingCard.style.display !== 'none') {
+          nowPlayingCard.style.backgroundColor = '#1e293b';
+          nowPlayingCard.style.border = '1px solid #334155';
+        }
+      }
+    }
+
+    // Update theme when channel is selected
+    const originalVideoPlayerSetup = window.playStream;
+    if (typeof playStream === 'function') {
+      window.playStream = function(...args) {
+        const result = originalVideoPlayerSetup.apply(this, args);
+        const theme = body.classList.contains('dark') ? 'dark' : 'light';
+        if (theme === 'light') {
+          nowPlayingCard.style.backgroundColor = '#ffffff';
+          nowPlayingCard.style.border = '1px solid #e2e8f0';
+        } else {
+          nowPlayingCard.style.backgroundColor = '#1e293b';
+          nowPlayingCard.style.border = '1px solid #334155';
+        }
+        return result;
+      };
+    }
+  </script>
 </body>
 </html>
