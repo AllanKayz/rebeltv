@@ -32,18 +32,18 @@
       flex-direction: column;
       min-height: 100vh;
     }
-.loading-indicator {
-  text-align: center;
-  padding: 20px;
-  color: #666;
-  font-style: italic;
+
+/* Add to existing styles */
+#channel-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  max-height: 60vh;
 }
 
-.error-message {
+.loading-indicator {
   text-align: center;
-  padding: 20px;
-  color: #e74c3c;
-  font-weight: bold;
+  padding: 1rem;
+  color: #9ca3af;
 }
 
     video {
