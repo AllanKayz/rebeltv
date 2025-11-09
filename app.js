@@ -1,86 +1,105 @@
 // Select DOM elements
 const videoPlayer = document.getElementById('video-player');
-const loadChannelsBtn = document.getElementById('load-channels-btn');
 const channelList = document.getElementById('channel-list');
 const channelCount = document.getElementById('channel-count');
+const searchInput = document.getElementById('search-channels');
 const newStreamUrlInput = document.getElementById('new-stream-url');
 const addStreamBtn = document.getElementById('add-stream-btn');
-const searchInput = document.getElementById('search-channels'); // New search input
+const epgModal = document.getElementById('epg-modal');
+const epgChannelName = document.getElementById('epg-channel-name');
+const epgGuide = document.getElementById('epg-guide');
+const closeEpgModal = document.getElementById('close-epg-modal');
 
-let channels = []; // Store the loaded channels globally for search and rendering
+let channels = []; // Store channels globally
 
-// Function to initialize the video player with HLS.js
+// Initialize video player
 function playChannel(url) {
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(videoPlayer);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      videoPlayer.play();
-    });
+    hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayer.play());
   } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
     videoPlayer.src = url;
-    videoPlayer.play();
+    videoPlayer.addEventListener('loadedmetadata', () => videoPlayer.play());
   } else {
-    alert('Your browser does not support HLS streaming.');
+    alert('HLS streaming not supported.');
   }
 }
 
-// Function to render the channel list
+// Render channel list
 function renderChannelList(filteredChannels = channels) {
-  // Sort channels alphabetically by name
-  filteredChannels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-  // Clear the existing channel list
   channelList.innerHTML = '';
+  filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
 
-  // Render each channel
-  filteredChannels.forEach((channel) => {
+  filteredChannels.forEach(channel => {
     const channelCard = document.createElement('div');
-    channelCard.className = 'channel-card flex justify-between items-center p-4 mb-2 border rounded shadow';
+    channelCard.className = 'channel-card';
 
-    // Channel name
-    const nameElement = document.createElement('span');
-    nameElement.textContent = channel.name || 'Unknown Channel';
-    nameElement.className = 'text-gray-800 font-medium';
+    const leftContainer = document.createElement('div');
+    leftContainer.className = 'flex items-center cursor-pointer';
+    leftContainer.addEventListener('click', () => playChannel(channel.url));
 
-    // Play button with icon
-    const playButton = document.createElement('button');
-    playButton.className = 'icon-btn flex items-center justify-center p-2 rounded bg-blue-500 text-white hover:bg-blue-600';
-    playButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-6.518-4.21A1 1 0 007 7.788v8.423a1 1 0 001.234.97l6.518-2.23a1 1 0 00.482-.97v-2.423a1 1 0 00-.482-.97z" />
-      </svg>
-    `;
-    playButton.addEventListener('click', () => playChannel(channel.url));
+    const logo = document.createElement('img');
+    logo.className = 'channel-logo';
+    logo.src = channel.logo || 'placeholder.png'; // Fallback image
+    logo.alt = `${channel.name} logo`;
+    logo.onerror = () => { logo.src = 'placeholder.png'; }; // Handle broken images
 
-    // Append elements to the card
-    channelCard.appendChild(nameElement);
-    channelCard.appendChild(playButton);
+    const name = document.createElement('span');
+    name.textContent = channel.name;
+
+    leftContainer.append(logo, name);
+
+    if (channel.id) { // Only show EPG button for non-custom streams
+      const epgButton = document.createElement('button');
+      epgButton.className = 'icon-btn';
+      epgButton.innerHTML = `<i class="fas fa-calendar-alt"></i>`;
+      epgButton.addEventListener('click', () => openEpgModal(channel));
+      channelCard.append(leftContainer, epgButton);
+    } else {
+      channelCard.append(leftContainer);
+    }
+
     channelList.appendChild(channelCard);
   });
 
-  // Update the channel count
   channelCount.textContent = filteredChannels.length;
 }
 
 // Fetch and display channels
 async function loadAndDisplayChannels() {
   try {
-    const streams = await fetch('https://iptv-org.github.io/api/streams.json').then((res) => res.json());
-    channels = streams.map((stream) => ({
-      name: stream.channel || 'Unknown Channel', // Keep "name" variable
-      url: stream.url,
-    }));
+    const [streamsRes, channelsRes] = await Promise.all([
+      fetch('https://iptv-org.github.io/api/streams.json'),
+      fetch('https://iptv-org.github.io/api/channels.json'),
+    ]);
+
+    const streams = await streamsRes.json();
+    const channelData = await channelsRes.json();
+
+    const channelsMap = new Map(channelData.map(c => [c.id, c]));
+
+    channels = streams
+      .map(stream => {
+        const channelInfo = channelsMap.get(stream.channel);
+        if (!channelInfo) return null;
+
+        return {
+          name: channelInfo.name,
+          url: stream.url,
+          logo: channelInfo.logo,
+          id: channelInfo.id,
+        };
+      })
+      .filter(Boolean);
+
     renderChannelList();
   } catch (error) {
     console.error('Error loading channels:', error);
-    alert('Failed to load channels. Please try again.');
+    alert('Failed to load channels.');
   }
 }
-
-// Automatically load channels when the app initializes
-loadAndDisplayChannels();
 
 // Add and play a new stream
 addStreamBtn.addEventListener('click', () => {
@@ -91,21 +110,50 @@ addStreamBtn.addEventListener('click', () => {
     return;
   }
 
-  const newChannel = { name: 'Custom Stream', url: url }; // Keep "name" variable
+  const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png' };
   channels.push(newChannel);
   renderChannelList();
   playChannel(url);
   newStreamUrlInput.value = '';
 });
 
-// Search channels on input
-searchInput.addEventListener('input', (event) => {
-  const query = event.target.value.toLowerCase();
-  const filteredChannels = channels.filter((channel) =>
-    channel.name.toLowerCase().includes(query)
-  );
-  renderChannelList(filteredChannels);
+// EPG Modal Functions
+async function openEpgModal(channel) {
+  epgChannelName.textContent = channel.name;
+  epgGuide.innerHTML = '<li>Loading...</li>';
+  epgModal.classList.remove('hidden');
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const response = await fetch(`https://iptv-org.github.io/api/programmes.json?channel=${channel.id}&date=${today}`);
+    const programs = await response.json();
+
+    epgGuide.innerHTML = '';
+    if (programs.length > 0) {
+      programs.forEach(program => {
+        const item = document.createElement('li');
+        item.textContent = `${new Date(program.start).toLocaleTimeString()} - ${program.title}`;
+        epgGuide.appendChild(item);
+      });
+    } else {
+      epgGuide.innerHTML = '<li>No program guide available.</li>';
+    }
+  } catch (error) {
+    console.error('Error fetching EPG data:', error);
+    epgGuide.innerHTML = '<li>Error loading guide.</li>';
+  }
+}
+
+closeEpgModal.addEventListener('click', () => {
+  epgModal.classList.add('hidden');
 });
 
-// Load channels on button click
-loadChannelsBtn.addEventListener('click', loadAndDisplayChannels);
+// Search functionality
+searchInput.addEventListener('input', e => {
+  const query = e.target.value.toLowerCase();
+  const filtered = channels.filter(c => c.name.toLowerCase().includes(query));
+  renderChannelList(filtered);
+});
+
+// Initial load
+loadAndDisplayChannels();
