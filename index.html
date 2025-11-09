@@ -6,25 +6,31 @@
   <title>REBELTV Streaming App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     html, body {
       height: 100%;
       margin: 0;
+      background-color: #111827; /* Dark background */
     }
 
     #app-container {
       display: flex;
       flex-direction: column;
       height: 100%;
+      max-width: 1200px;
+      margin: auto;
     }
 
     #channel-list {
+      flex-grow: 1;
       overflow-y: auto;
-      flex: 1;
     }
 
     video {
-      max-height: 60vh;
+      width: 100%;
+      border-radius: 0.5rem;
+      background-color: #000;
     }
 
     .channel-card {
@@ -32,16 +38,21 @@
       justify-content: space-between;
       align-items: center;
       padding: 0.75rem;
-      border: 1px solid #e5e7eb; /* Light gray border */
       border-radius: 0.375rem;
-      background-color: #f9fafb; /* Light background */
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-      transition: background-color 0.3s ease, transform 0.2s;
+      background-color: #1f2937; /* Darker card background */
+      transition: background-color 0.3s ease;
     }
 
     .channel-card:hover {
-      background-color: #f3f4f6; /* Slightly darker background on hover */
-      transform: scale(1.02); /* Slightly larger on hover */
+      background-color: #374151; /* Hover effect */
+    }
+
+    .channel-logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 0.75rem;
+      border-radius: 50%;
+      object-fit: cover;
     }
 
     .icon-btn {
@@ -50,68 +61,66 @@
       justify-content: center;
       padding: 0.5rem;
       border-radius: 0.375rem;
-      background-color: #3b82f6; /* Blue color */
-      color: white;
-      transition: background-color 0.3s;
+      background-color: transparent;
+      color: #9ca3af;
+      transition: color 0.3s;
     }
 
     .icon-btn:hover {
-      background-color: #2563eb; /* Darker blue on hover */
+      color: white;
     }
   </style>
 </head>
-<body class="bg-gray-100">
-  <div id="app-container" class="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md">
-    <header class="p-4 bg-blue-500 text-white text-center">
-      <h1 class="text-2xl font-bold">REBELTV Streaming App</h1>
+<body class="text-white">
+  <div id="app-container">
+    <header class="p-4 text-center">
+      <h1 class="text-3xl font-bold"><i class="fas fa-satellite-dish mr-2"></i>REBELTV</h1>
     </header>
 
-    <main class="flex flex-col flex-grow p-4">
-      <!-- Add Stream Section -->
-      <div class="mb-4">
-        <label for="new-stream-url" class="block text-sm font-medium text-gray-700 mb-2">Add New Stream URL</label>
-        <div class="inline-input-btn flex gap-2">
+    <div id="main-content" class="p-4 flex flex-col md:flex-row flex-grow overflow-hidden">
+      <div id="left-panel" class="w-full md:w-2/5 flex flex-col">
+        <div class="relative mb-4">
           <input 
-            id="new-stream-url" 
+            id="search-channels"
             type="text" 
-            placeholder="e.g., https://example.com/stream.m3u8" 
-            class="w-full border border-gray-300 rounded-lg p-2" />
-          <button 
-            id="add-stream-btn" 
-            class="icon-btn">
-            <!-- Icon for the button -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+            placeholder="Search channel..."
+            class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 pl-10" />
+          <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        </div>
+        <div class="mb-4">
+          <label for="new-stream-url" class="block text-sm font-medium text-gray-400 mb-2">Add New Stream URL</label>
+          <div class="flex gap-2">
+            <input
+              id="new-stream-url"
+              type="text"
+              placeholder="e.g., https://example.com/stream.m3u8"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2" />
+            <button
+              id="add-stream-btn"
+              class="icon-btn bg-blue-500 hover:bg-blue-600 text-white">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </div>
+        <h2 class="text-xl font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
+        <div id="channel-list">
+          <!-- Channels dynamically populated -->
         </div>
       </div>
 
-<!-- Video Player -->
-      <div class="mb-4">
-        <video id="video-player" class="w-full rounded-lg bg-black" controls></video>
+      <div id="right-panel" class="w-full md:w-3/5 mt-4 md:mt-0 md:pl-6">
+        <video id="video-player" controls></video>
       </div>
+    </div>
+  </div>
 
-      <!-- Search Section with Load Channels -->
-      <div class="mb-4 flex gap-2">
-        <input 
-          id="search-channels" 
-          type="text" 
-          placeholder="Search channel by name..." 
-          class="w-full border border-gray-300 rounded-lg p-2" />
-        <!--button 
-          id="load-channels-btn" 
-          class="bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600 transition">
-          Load Channels
-        </button-->
-      </div>
-
-      <!-- Channels List -->
-      <h2 class="text-lg font-semibold mb-2">Channels (<span id="channel-count">0</span>)</h2>
-      <div id="channel-list" class="overflow-y-auto max-h-96">
-        <!-- Channels will be dynamically populated -->
-      </div>
-    </main>
+  <!-- EPG Modal -->
+  <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden">
+    <div class="bg-gray-800 p-6 rounded-lg max-w-lg w-full">
+      <h2 class="text-2xl font-bold mb-4" id="epg-channel-name"></h2>
+      <div id="epg-guide" class="overflow-y-auto max-h-96"></div>
+      <button id="close-epg-modal" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
+    </div>
   </div>
 
   <script src="app.js"></script>
