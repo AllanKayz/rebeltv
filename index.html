@@ -22,23 +22,6 @@
       margin: auto;
     }
 
-    #main-content {
-      display: flex;
-      flex-grow: 1;
-      overflow: hidden;
-    }
-
-    #left-panel {
-      width: 40%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #right-panel {
-      width: 60%;
-      padding-left: 1.5rem;
-    }
-
     #channel-list {
       flex-grow: 1;
       overflow-y: auto;
@@ -94,8 +77,8 @@
       <h1 class="text-3xl font-bold"><i class="fas fa-satellite-dish mr-2"></i>REBELTV</h1>
     </header>
 
-    <div id="main-content" class="p-4">
-      <div id="left-panel">
+    <div id="main-content" class="p-4 flex flex-col md:flex-row flex-grow overflow-hidden">
+      <div id="left-panel" class="w-full md:w-2/5 flex flex-col">
         <div class="relative mb-4">
           <input 
             id="search-channels"
@@ -125,7 +108,7 @@
         </div>
       </div>
 
-      <div id="right-panel">
+      <div id="right-panel" class="w-full md:w-3/5 mt-4 md:mt-0 md:pl-6">
         <video id="video-player" controls></video>
       </div>
     </div>

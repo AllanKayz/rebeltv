@@ -50,15 +50,14 @@ function renderChannelList(filteredChannels = channels) {
     name.textContent = channel.name;
 
     leftContainer.append(logo, name);
+    channelCard.append(leftContainer);
 
     if (channel.id) { // Only show EPG button for non-custom streams
       const epgButton = document.createElement('button');
       epgButton.className = 'icon-btn';
       epgButton.innerHTML = `<i class="fas fa-calendar-alt"></i>`;
       epgButton.addEventListener('click', () => openEpgModal(channel));
-      channelCard.append(leftContainer, epgButton);
-    } else {
-      channelCard.append(leftContainer);
+      channelCard.append(epgButton);
     }
 
     channelList.appendChild(channelCard);
