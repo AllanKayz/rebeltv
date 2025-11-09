@@ -10,7 +10,12 @@ const epgChannelName = document.getElementById('epg-channel-name');
 const epgGuide = document.getElementById('epg-guide');
 const closeEpgModal = document.getElementById('close-epg-modal');
 
-let channels = []; // Store channels globally
+let channels = []; // Store all channels globally
+let filteredChannels = []; // Store filtered channels for search
+let displayedChannels = []; // Currently displayed channels
+let isLoading = false;
+let currentBatch = 0;
+const BATCH_SIZE = 50; // Number of channels to load per batch
 
 // Initialize video player
 function playChannel(url) {
@@ -27,12 +32,17 @@ function playChannel(url) {
   }
 }
 
-// Render channel list
-function renderChannelList(filteredChannels = channels) {
-  channelList.innerHTML = '';
-  filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
+// Render channel list with lazy loading
+function renderChannelList(channelsToRender = displayedChannels, append = false) {
+  if (!append) {
+    channelList.innerHTML = '';
+    currentBatch = 0;
+  }
 
-  filteredChannels.forEach(channel => {
+  // Sort channels alphabetically
+  channelsToRender.sort((a, b) => a.name.localeCompare(b.name));
+
+  channelsToRender.forEach(channel => {
     const channelCard = document.createElement('div');
     channelCard.className = 'channel-card';
 
@@ -63,12 +73,54 @@ function renderChannelList(filteredChannels = channels) {
     channelList.appendChild(channelCard);
   });
 
-  channelCount.textContent = filteredChannels.length;
+  channelCount.textContent = `${displayedChannels.length} of ${filteredChannels.length} channels`;
 }
 
-// Fetch and display channels
+// Load next batch of channels
+function loadNextBatch() {
+  if (isLoading || currentBatch * BATCH_SIZE >= filteredChannels.length) {
+    return;
+  }
+
+  isLoading = true;
+  
+  // Show loading indicator
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-indicator';
+  loadingIndicator.textContent = 'Loading more channels...';
+  channelList.appendChild(loadingIndicator);
+
+  // Simulate loading delay for better UX (remove in production)
+  setTimeout(() => {
+    const startIndex = currentBatch * BATCH_SIZE;
+    const endIndex = startIndex + BATCH_SIZE;
+    const nextBatch = filteredChannels.slice(startIndex, endIndex);
+    
+    displayedChannels = displayedChannels.concat(nextBatch);
+    currentBatch++;
+    
+    // Remove loading indicator
+    channelList.removeChild(loadingIndicator);
+    
+    // Render the new batch
+    renderChannelList(nextBatch, true);
+    
+    isLoading = false;
+  }, 300);
+}
+
+// Check if user has scrolled to bottom
+function isScrollNearBottom() {
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+  return scrollTop + clientHeight >= scrollHeight - 100; // 100px from bottom
+}
+
+// Fetch and display channels with lazy loading
 async function loadAndDisplayChannels() {
   try {
+    // Show initial loading state
+    channelList.innerHTML = '<div class="loading-indicator">Loading channels...</div>';
+    
     const [streamsRes, channelsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/streams.json'),
       fetch('https://iptv-org.github.io/api/channels.json'),
@@ -93,10 +145,15 @@ async function loadAndDisplayChannels() {
       })
       .filter(Boolean);
 
-    renderChannelList();
+    // Initialize filtered channels with all channels
+    filteredChannels = [...channels];
+    displayedChannels = [];
+    
+    // Load first batch
+    loadNextBatch();
   } catch (error) {
     console.error('Error loading channels:', error);
-    alert('Failed to load channels.');
+    channelList.innerHTML = '<div class="error-message">Failed to load channels. Please try again later.</div>';
   }
 }
 
@@ -111,7 +168,11 @@ addStreamBtn.addEventListener('click', () => {
 
   const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png' };
   channels.push(newChannel);
-  renderChannelList();
+  filteredChannels.push(newChannel);
+  displayedChannels.push(newChannel);
+  
+  // Re-render to show the new channel
+  renderChannelList([newChannel], true);
   playChannel(url);
   newStreamUrlInput.value = '';
 });
@@ -124,16 +185,26 @@ async function openEpgModal(channel) {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const response = await fetch(`https://iptv-org.github.io/api/programmes.json?channel=${channel.id}&date=${today}`);
-    const programs = await response.json();
+    const response = await fetch(`https://iptv-org.github.io/api/epg.json?channel=${channel.id}&date=${today}`);
+    const programmes = await response.json();
 
     epgGuide.innerHTML = '';
-    if (programs.length > 0) {
-      programs.forEach(program => {
-        const item = document.createElement('li');
-        item.textContent = `${new Date(program.start).toLocaleTimeString()} - ${program.title}`;
-        epgGuide.appendChild(item);
-      });
+    if (programmes && programmes.length > 0) {
+      // Get today's programmes for this channel
+      const channelProgrammes = programmes.filter(program => 
+        program.channel === channel.id && 
+        program.start.startsWith(today)
+      ).slice(0, 20); // Limit to 20 programmes
+      
+      if (channelProgrammes.length > 0) {
+        channelProgrammes.forEach(program => {
+          const item = document.createElement('li');
+          item.textContent = `${new Date(program.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${program.title}`;
+          epgGuide.appendChild(item);
+        });
+      } else {
+        epgGuide.innerHTML = '<li>No programmes available for today.</li>';
+      }
     } else {
       epgGuide.innerHTML = '<li>No program guide available.</li>';
     }
@@ -147,11 +218,27 @@ closeEpgModal.addEventListener('click', () => {
   epgModal.classList.add('hidden');
 });
 
-// Search functionality
+// Search functionality with lazy loading
 searchInput.addEventListener('input', e => {
   const query = e.target.value.toLowerCase();
-  const filtered = channels.filter(c => c.name.toLowerCase().includes(query));
-  renderChannelList(filtered);
+  
+  if (query === '') {
+    filteredChannels = [...channels];
+  } else {
+    filteredChannels = channels.filter(c => c.name.toLowerCase().includes(query));
+  }
+  
+  displayedChannels = [];
+  currentBatch = 0;
+  renderChannelList();
+  loadNextBatch(); // Load first batch of search results
+});
+
+// Scroll event for infinite scrolling
+window.addEventListener('scroll', () => {
+  if (isScrollNearBottom() && !isLoading) {
+    loadNextBatch();
+  }
 });
 
 // Initial load
