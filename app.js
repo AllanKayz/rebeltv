@@ -10,12 +10,12 @@ const epgChannelName = document.getElementById('epg-channel-name');
 const epgGuide = document.getElementById('epg-guide');
 const closeEpgModal = document.getElementById('close-epg-modal');
 
-let channels = []; // Store all channels globally
-let filteredChannels = []; // Store filtered channels for search
-let displayedChannels = []; // Currently displayed channels
+let channels = []; // Store channels globally
+let allChannels = []; // Store all channels for filtering
+let currentPage = 0;
+const channelsPerPage = 50;
 let isLoading = false;
-let currentBatch = 0;
-const BATCH_SIZE = 50; // Number of channels to load per batch
+let hasMoreChannels = true;
 
 // Initialize video player
 function playChannel(url) {
@@ -33,16 +33,22 @@ function playChannel(url) {
 }
 
 // Render channel list with lazy loading
-function renderChannelList(channelsToRender = displayedChannels, append = false) {
-  if (!append) {
+function renderChannelList(filteredChannels = null) {
+  const channelsToRender = filteredChannels || allChannels;
+  
+  // Calculate the range of channels to display
+  const startIndex = currentPage * channelsPerPage;
+  const endIndex = startIndex + channelsPerPage;
+  const channelsSlice = channelsToRender.slice(0, endIndex);
+  
+  // Clear channel list only on first page or when filtering
+  if (currentPage === 0 || filteredChannels) {
     channelList.innerHTML = '';
-    currentBatch = 0;
   }
-
-  // Sort channels alphabetically
-  channelsToRender.sort((a, b) => a.name.localeCompare(b.name));
-
-  channelsToRender.forEach(channel => {
+  
+  channelsSlice.sort((a, b) => a.name.localeCompare(b.name));
+  
+  channelsSlice.forEach(channel => {
     const channelCard = document.createElement('div');
     channelCard.className = 'channel-card';
 
@@ -73,53 +79,15 @@ function renderChannelList(channelsToRender = displayedChannels, append = false)
     channelList.appendChild(channelCard);
   });
 
-  channelCount.textContent = `${displayedChannels.length} of ${filteredChannels.length} channels`;
+  channelCount.textContent = channelsToRender.length;
+  hasMoreChannels = endIndex < channelsToRender.length;
+  isLoading = false;
 }
 
-// Load next batch of channels
-function loadNextBatch() {
-  if (isLoading || currentBatch * BATCH_SIZE >= filteredChannels.length) {
-    return;
-  }
-
-  isLoading = true;
-  
-  // Show loading indicator
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.className = 'loading-indicator';
-  loadingIndicator.textContent = 'Loading more channels...';
-  channelList.appendChild(loadingIndicator);
-
-  // Simulate loading delay for better UX (remove in production)
-  setTimeout(() => {
-    const startIndex = currentBatch * BATCH_SIZE;
-    const endIndex = startIndex + BATCH_SIZE;
-    const nextBatch = filteredChannels.slice(startIndex, endIndex);
-    
-    displayedChannels = displayedChannels.concat(nextBatch);
-    currentBatch++;
-    
-    // Remove loading indicator
-    channelList.removeChild(loadingIndicator);
-    
-    // Render the new batch
-    renderChannelList(nextBatch, true);
-    
-    isLoading = false;
-  }, 300);
-}
-
-// Check if user has scrolled to bottom
-function isScrollNearBottom() {
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-  return scrollTop + clientHeight >= scrollHeight - 100; // 100px from bottom
-}
-
-// Fetch and display channels with lazy loading
-async function loadAndDisplayChannels() {
+// Fetch channels with pagination
+async function fetchChannels(page = 0) {
   try {
-    // Show initial loading state
-    channelList.innerHTML = '<div class="loading-indicator">Loading channels...</div>';
+    isLoading = true;
     
     const [streamsRes, channelsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/streams.json'),
@@ -131,7 +99,7 @@ async function loadAndDisplayChannels() {
 
     const channelsMap = new Map(channelData.map(c => [c.id, c]));
 
-    channels = streams
+    const newChannels = streams
       .map(stream => {
         const channelInfo = channelsMap.get(stream.channel);
         if (!channelInfo) return null;
@@ -145,16 +113,37 @@ async function loadAndDisplayChannels() {
       })
       .filter(Boolean);
 
-    // Initialize filtered channels with all channels
-    filteredChannels = [...channels];
-    displayedChannels = [];
-    
-    // Load first batch
-    loadNextBatch();
+    // If it's the first page, replace all channels
+    if (page === 0) {
+      allChannels = newChannels;
+      channels = [...newChannels];
+    } else {
+      // For subsequent pages, append to existing channels
+      allChannels = [...allChannels, ...newChannels];
+      channels = [...channels, ...newChannels];
+    }
+
+    renderChannelList();
   } catch (error) {
     console.error('Error loading channels:', error);
-    channelList.innerHTML = '<div class="error-message">Failed to load channels. Please try again later.</div>';
+    alert('Failed to load channels.');
+    isLoading = false;
   }
+}
+
+// Load more channels when scrolling
+function setupInfiniteScroll() {
+  channelList.addEventListener('scroll', () => {
+    if (isLoading || !hasMoreChannels) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = channelList;
+    
+    // Load more when user is near the bottom
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      currentPage++;
+      fetchChannels(currentPage);
+    }
+  });
 }
 
 // Add and play a new stream
@@ -168,11 +157,8 @@ addStreamBtn.addEventListener('click', () => {
 
   const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png' };
   channels.push(newChannel);
-  filteredChannels.push(newChannel);
-  displayedChannels.push(newChannel);
-  
-  // Re-render to show the new channel
-  renderChannelList([newChannel], true);
+  allChannels.push(newChannel);
+  renderChannelList();
   playChannel(url);
   newStreamUrlInput.value = '';
 });
@@ -186,25 +172,15 @@ async function openEpgModal(channel) {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const response = await fetch(`https://iptv-org.github.io/api/epg.json?channel=${channel.id}&date=${today}`);
-    const programmes = await response.json();
+    const programs = await response.json();
 
     epgGuide.innerHTML = '';
-    if (programmes && programmes.length > 0) {
-      // Get today's programmes for this channel
-      const channelProgrammes = programmes.filter(program => 
-        program.channel === channel.id && 
-        program.start.startsWith(today)
-      ).slice(0, 20); // Limit to 20 programmes
-      
-      if (channelProgrammes.length > 0) {
-        channelProgrammes.forEach(program => {
-          const item = document.createElement('li');
-          item.textContent = `${new Date(program.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${program.title}`;
-          epgGuide.appendChild(item);
-        });
-      } else {
-        epgGuide.innerHTML = '<li>No programmes available for today.</li>';
-      }
+    if (programs.length > 0) {
+      programs.forEach(program => {
+        const item = document.createElement('li');
+        item.textContent = `${new Date(program.start).toLocaleTimeString()} - ${program.title}`;
+        epgGuide.appendChild(item);
+      });
     } else {
       epgGuide.innerHTML = '<li>No program guide available.</li>';
     }
@@ -218,28 +194,20 @@ closeEpgModal.addEventListener('click', () => {
   epgModal.classList.add('hidden');
 });
 
-// Search functionality with lazy loading
+// Search functionality
 searchInput.addEventListener('input', e => {
   const query = e.target.value.toLowerCase();
+  const filtered = allChannels.filter(c => c.name.toLowerCase().includes(query));
   
-  if (query === '') {
-    filteredChannels = [...channels];
-  } else {
-    filteredChannels = channels.filter(c => c.name.toLowerCase().includes(query));
-  }
-  
-  displayedChannels = [];
-  currentBatch = 0;
-  renderChannelList();
-  loadNextBatch(); // Load first batch of search results
-});
-
-// Scroll event for infinite scrolling
-window.addEventListener('scroll', () => {
-  if (isScrollNearBottom() && !isLoading) {
-    loadNextBatch();
-  }
+  // Reset pagination when searching
+  currentPage = 0;
+  renderChannelList(filtered);
 });
 
 // Initial load
-loadAndDisplayChannels();
+function initializeApp() {
+  fetchChannels(0);
+  setupInfiniteScroll();
+}
+
+initializeApp();
