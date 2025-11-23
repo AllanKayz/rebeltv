@@ -124,11 +124,10 @@ function renderChannelList(filteredChannels = null) {
       }
 
       channelCard.append(epgButton);
-    } */
+    } 
 
     // Show feeds icons
     const feeds = getFeeds(channel.id);
-    /*
     if (feeds.length > 0) {
       const feedsContainer = document.createElement('div');
       feedsContainer.className = 'feeds-list';
@@ -146,10 +145,10 @@ function renderChannelList(filteredChannels = null) {
         feedsContainer.appendChild(a);
       });
       channelCard.append(feedsContainer);
-    }
+    } */
 
     channelList.appendChild(channelCard);
-  });*/
+  });
 
   channelCount.textContent = channelsToRender.length;
   hasMoreChannels = endIndex < channelsToRender.length;
