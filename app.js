@@ -9,6 +9,8 @@ const epgModal = document.getElementById('epg-modal');
 const epgChannelName = document.getElementById('epg-channel-name');
 const epgGuide = document.getElementById('epg-guide');
 const closeEpgModal = document.getElementById('close-epg-modal');
+// Add this to your EPG modal markup for guide source display
+const epgSourceInfo = document.getElementById('epg-source-info'); 
 
 let channels = []; // Store channels globally
 let allChannels = []; // Store all channels for filtering
@@ -16,6 +18,11 @@ let currentPage = 0;
 const channelsPerPage = 50;
 let isLoading = false;
 let hasMoreChannels = true;
+
+// Extra metadata holders
+let channelLogosMap = {};
+let guidesByChannel = {};
+let feedsByChannel = {};
 
 // Initialize video player
 function playChannel(channel) {
@@ -31,13 +38,8 @@ function playChannel(channel) {
   // Update theme on card
   const body = document.body;
   const theme = body.classList.contains('dark') ? 'dark' : 'light';
-  if (theme === 'light') {
-    nowPlayingCard.style.backgroundColor = '#ffffff';
-    nowPlayingCard.style.border = '1px solid #e2e8f0';
-  } else {
-    nowPlayingCard.style.backgroundColor = '#1e293b';
-    nowPlayingCard.style.border = '1px solid #334155';
-  }
+  nowPlayingCard.style.backgroundColor = theme === 'light' ? '#ffffff' : '#1e293b';
+  nowPlayingCard.style.border = theme === 'light' ? '1px solid #e2e8f0' : '1px solid #334155';
 
   // Then, set up the video player
   if (Hls.isSupported()) {
@@ -53,7 +55,23 @@ function playChannel(channel) {
   }
 }
 
-// Render channel list with lazy loading
+// Get logo using channels.json > logos.json fallback
+function getChannelLogo(channelId, primaryLogo) {
+  if (primaryLogo) return primaryLogo;
+  return channelLogosMap[channelId] || 'placeholder.png';
+}
+
+// Get guides for a channel
+function getGuideSources(channelId) {
+  return guidesByChannel[channelId] || [];
+}
+
+// Get feeds for channel
+function getFeeds(channelId) {
+  return feedsByChannel[channelId] || [];
+}
+
+// Render channel list with lazy loading & new metadata
 function renderChannelList(filteredChannels = null) {
   const channelsToRender = filteredChannels || allChannels;
   
@@ -79,22 +97,53 @@ function renderChannelList(filteredChannels = null) {
 
     const logo = document.createElement('img');
     logo.className = 'channel-logo';
-    logo.src = channel.logo || 'placeholder.png'; // Fallback image
+    logo.src = getChannelLogo(channel.id, channel.logo); // Use fallback logic
     logo.alt = `${channel.name} logo`;
     logo.onerror = () => { logo.src = 'placeholder.png'; }; // Handle broken images
 
     const name = document.createElement('span');
     name.textContent = channel.name;
-
     leftContainer.append(logo, name);
     channelCard.append(leftContainer);
 
-    if (channel.id) { // Only show EPG button for non-custom streams
+    // Show EPG button and sources info
+    if (channel.id) { 
       const epgButton = document.createElement('button');
       epgButton.className = 'icon-btn';
       epgButton.innerHTML = `<i class="fas fa-calendar-alt"></i>`;
       epgButton.addEventListener('click', () => openEpgModal(channel));
+
+      const guideSources = getGuideSources(channel.id);
+      if (guideSources.length > 0) {
+        const guideInfo = document.createElement('span');
+        guideInfo.className = 'epg-guide-info';
+        guideInfo.title = 'EPG sources: ' + guideSources.map(g => g.name).join(', ');
+        guideInfo.innerHTML = `<i class="fas fa-info-circle"></i>`;
+        epgButton.appendChild(guideInfo);
+      }
+
       channelCard.append(epgButton);
+    }
+
+    // Show feeds icons
+    const feeds = getFeeds(channel.id);
+    if (feeds.length > 0) {
+      const feedsContainer = document.createElement('div');
+      feedsContainer.className = 'feeds-list';
+      feeds.forEach(feed => {
+        const a = document.createElement('a');
+        a.href = feed.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.className = 'feed-icon';
+        a.title = feed.type;
+        a.innerHTML = feed.type === 'website' ? '<i class="fas fa-globe"></i>' :
+          feed.type === 'facebook' ? '<i class="fab fa-facebook"></i>' :
+          feed.type === 'twitter' ? '<i class="fab fa-twitter"></i>' :
+          '<i class="fas fa-link"></i>';
+        feedsContainer.appendChild(a);
+      });
+      channelCard.append(feedsContainer);
     }
 
     channelList.appendChild(channelCard);
@@ -105,7 +154,7 @@ function renderChannelList(filteredChannels = null) {
   isLoading = false;
 }
 
-// Fetch channels with pagination
+// Fetch channels + extra metadata
 async function fetchChannels(page = 0) {
   try {
     isLoading = true;
@@ -123,9 +172,22 @@ async function fetchChannels(page = 0) {
     const channelLogos = await channelLogosRes.json();
     const guides = await guidesRes.json();
     const feeds = await feedsRes.json();
-    
 
     const channelsMap = new Map(channelData.map(c => [c.id, c]));
+    channelLogosMap = {};
+    channelLogos.forEach(l => { channelLogosMap[l.id] = l.url; });
+
+    guidesByChannel = {};
+    guides.forEach(g => {
+      if (!guidesByChannel[g.channel]) guidesByChannel[g.channel] = [];
+      guidesByChannel[g.channel].push(g);
+    });
+
+    feedsByChannel = {};
+    feeds.forEach(f => {
+      if (!feedsByChannel[f.channel]) feedsByChannel[f.channel] = [];
+      feedsByChannel[f.channel].push(f);
+    });
 
     const newChannels = streams
       .map(stream => {
@@ -196,6 +258,15 @@ async function openEpgModal(channel) {
   epgChannelName.textContent = channel.name;
   epgGuide.innerHTML = '<li>Loading...</li>';
   epgModal.classList.remove('hidden');
+
+  // Show guide source(s) info at top
+  const guideSources = getGuideSources(channel.id);
+  if (epgSourceInfo) {
+    epgSourceInfo.textContent =
+      guideSources.length > 0
+        ? "Guide sources: " + guideSources.map(g => g.name).join(', ')
+        : "No EPG sources found.";
+  }
 
   try {
     const today = new Date().toISOString().slice(0, 10);
