@@ -264,7 +264,7 @@
           </div>
           
           <!-- Now Playing Info Card -->
-          <div class="mt-4 p-4 rounded-lg" id="now-playing-card" style="display: none;">
+          <div class="mt-4 p-4 rounded-lg" id="now-playing-card">
             <h3 class="font-semibold text-lg mb-2">Now Playing</h3>
             <p class="text-sm opacity-75" id="now-playing-description">Select a channel to start streaming</p>
           </div>
@@ -391,22 +391,7 @@
       }
     }
 
-    // Update theme when channel is selected
-    const originalVideoPlayerSetup = window.playStream;
-    if (typeof playStream === 'function') {
-      window.playStream = function(...args) {
-        const result = originalVideoPlayerSetup.apply(this, args);
-        const theme = body.classList.contains('dark') ? 'dark' : 'light';
-        if (theme === 'light') {
-          nowPlayingCard.style.backgroundColor = '#ffffff';
-          nowPlayingCard.style.border = '1px solid #e2e8f0';
-        } else {
-          nowPlayingCard.style.backgroundColor = '#1e293b';
-          nowPlayingCard.style.border = '1px solid #334155';
-        }
-        return result;
-      };
-    }
+
   </script>
 </body>
 </html>
