@@ -18,7 +18,28 @@ let isLoading = false;
 let hasMoreChannels = true;
 
 // Initialize video player
-function playChannel(url) {
+function playChannel(channel) {
+  const { url, name } = channel;
+
+  // Update now playing info first
+  const nowPlayingCard = document.getElementById('now-playing-card');
+  const nowPlayingDescription = document.getElementById('now-playing-description');
+
+  nowPlayingDescription.textContent = name;
+  nowPlayingCard.style.display = 'block';
+
+  // Update theme on card
+  const body = document.body;
+  const theme = body.classList.contains('dark') ? 'dark' : 'light';
+  if (theme === 'light') {
+    nowPlayingCard.style.backgroundColor = '#ffffff';
+    nowPlayingCard.style.border = '1px solid #e2e8f0';
+  } else {
+    nowPlayingCard.style.backgroundColor = '#1e293b';
+    nowPlayingCard.style.border = '1px solid #334155';
+  }
+
+  // Then, set up the video player
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(url);
@@ -54,7 +75,7 @@ function renderChannelList(filteredChannels = null) {
 
     const leftContainer = document.createElement('div');
     leftContainer.className = 'flex items-center cursor-pointer';
-    leftContainer.addEventListener('click', () => playChannel(channel.url));
+    leftContainer.addEventListener('click', () => playChannel(channel));
 
     const logo = document.createElement('img');
     logo.className = 'channel-logo';
@@ -159,7 +180,7 @@ addStreamBtn.addEventListener('click', () => {
   channels.push(newChannel);
   allChannels.push(newChannel);
   renderChannelList();
-  playChannel(url);
+  playChannel(newChannel);
   newStreamUrlInput.value = '';
 });
 
