@@ -107,6 +107,7 @@ function renderChannelList(filteredChannels = null) {
     channelCard.append(leftContainer);
 
     // Show EPG button and sources info
+    /*
     if (channel.id) { 
       const epgButton = document.createElement('button');
       epgButton.className = 'icon-btn';
@@ -123,10 +124,11 @@ function renderChannelList(filteredChannels = null) {
       }
 
       channelCard.append(epgButton);
-    }
+    } */
 
     // Show feeds icons
     const feeds = getFeeds(channel.id);
+    /*
     if (feeds.length > 0) {
       const feedsContainer = document.createElement('div');
       feedsContainer.className = 'feeds-list';
@@ -147,7 +149,7 @@ function renderChannelList(filteredChannels = null) {
     }
 
     channelList.appendChild(channelCard);
-  });
+  });*/
 
   channelCount.textContent = channelsToRender.length;
   hasMoreChannels = endIndex < channelsToRender.length;
@@ -179,8 +181,8 @@ async function fetchChannels(page = 0) {
 
     guidesByChannel = {};
     guides.forEach(g => {
-      if (!guidesByChannel[g.site]) guidesByChannel[g.site] = [];
-      guidesByChannel[g.site].push(g);
+      if (!guidesByChannel[g.channel]) guidesByChannel[g.channel] = [];
+      guidesByChannel[g.channel].push(g);
     });
 
     feedsByChannel = {};
@@ -270,7 +272,7 @@ async function openEpgModal(channel) {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const response = await fetch(`https://iptv-org.github.io/api/epg.json?channel=${channel.id}&date=${today}`);
+    const response = await fetch(`https://iptv-org.github.io/api/guides.json?channel=${channel.id}&date=${today}`);
     const programs = await response.json();
 
     epgGuide.innerHTML = '';
