@@ -179,8 +179,8 @@ async function fetchChannels(page = 0) {
 
     guidesByChannel = {};
     guides.forEach(g => {
-      if (!guidesByChannel[g.channel]) guidesByChannel[g.channel] = [];
-      guidesByChannel[g.channel].push(g);
+      if (!guidesByChannel[g.site]) guidesByChannel[g.site] = [];
+      guidesByChannel[g.site].push(g);
     });
 
     feedsByChannel = {};
