@@ -1,6 +1,6 @@
 # REBELTV Streaming App
 
-A simple streaming app that fetches and displays free IPTV streams from the [IPTV Streams API](https://iptv-org.github.io/api/streams.json). Users can play streams directly in the app and add custom stream URLs.
+A simple [streaming app](https://rebeltv.vercel.app) that fetches and displays free IPTV streams from the [IPTV Streams API](https://iptv-org.github.io/api/streams.json). Users can play streams directly in the app and add custom stream URLs.
 
 ---
 
