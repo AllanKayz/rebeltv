@@ -175,7 +175,7 @@ async function fetchChannels(page = 0) {
 
     const channelsMap = new Map(channelData.map(c => [c.id, c]));
     channelLogosMap = {};
-    channelLogos.forEach(l => { channelLogosMap[l.id] = l.url; });
+    channelLogos.forEach(l => { channelLogosMap[l.channel] = l.url; });
 
     guidesByChannel = {};
     guides.forEach(g => {
