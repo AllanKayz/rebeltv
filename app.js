@@ -110,13 +110,20 @@ async function fetchChannels(page = 0) {
   try {
     isLoading = true;
     
-    const [streamsRes, channelsRes] = await Promise.all([
+    const [streamsRes, channelsRes, channelLogosRes, guidesRes, feedsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/streams.json'),
       fetch('https://iptv-org.github.io/api/channels.json'),
+      fetch('https://iptv-org.github.io/api/logos.json'),
+      fetch('https://iptv-org.github.io/api/guides.json'),
+      fetch('https://iptv-org.github.io/api/feeds.json'),
     ]);
 
     const streams = await streamsRes.json();
     const channelData = await channelsRes.json();
+    const channelLogos = await channelLogosRes.json();
+    const guides = await guidesRes.json();
+    const feeds = await feedsRes.json();
+    
 
     const channelsMap = new Map(channelData.map(c => [c.id, c]));
 
