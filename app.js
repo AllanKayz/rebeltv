@@ -1,6 +1,7 @@
 // Select DOM elements
 const videoPlayer = document.getElementById('video-player');
 const channelList = document.getElementById('channel-list');
+const channelListContainer = document.getElementById('channel-list-container');
 const channelCount = document.getElementById('channel-count');
 const searchInput = document.getElementById('search-channels');
 const newStreamUrlInput = document.getElementById('new-stream-url');
@@ -9,10 +10,10 @@ const epgModal = document.getElementById('epg-modal');
 const epgChannelName = document.getElementById('epg-channel-name');
 const epgGuide = document.getElementById('epg-guide');
 const closeEpgModal = document.getElementById('close-epg-modal');
-// Add this to your EPG modal markup for guide source display
-const epgSourceInfo = document.getElementById('epg-source-info'); 
+const nowPlayingTitle = document.getElementById('now-playing-title');
+const nowPlayingDescription = document.getElementById('now-playing-description');
+const loadingOverlay = document.getElementById('loading-overlay');
 
-let channels = []; // Store channels globally
 let allChannels = []; // Store all channels for filtering
 let currentPage = 0;
 const channelsPerPage = 50;
@@ -28,20 +29,11 @@ let feedsByChannel = {};
 function playChannel(channel) {
   const { url, name } = channel;
 
-  // Update now playing info first
-  const nowPlayingCard = document.getElementById('now-playing-card');
-  const nowPlayingDescription = document.getElementById('now-playing-description');
+  // Update now playing info
+  nowPlayingTitle.textContent = name;
+  nowPlayingDescription.textContent = `Currently playing ${name}. Enjoy the stream!`;
 
-  nowPlayingDescription.textContent = name;
-  nowPlayingCard.style.display = 'block';
-
-  // Update theme on card
-  const body = document.body;
-  const theme = body.classList.contains('dark') ? 'dark' : 'light';
-  nowPlayingCard.style.backgroundColor = theme === 'light' ? '#ffffff' : '#1e293b';
-  nowPlayingCard.style.border = theme === 'light' ? '1px solid #e2e8f0' : '1px solid #334155';
-
-  // Then, set up the video player
+  // Set up the video player
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(url);
@@ -71,92 +63,84 @@ function getFeeds(channelId) {
   return feedsByChannel[channelId] || [];
 }
 
-// Render channel list with lazy loading & new metadata
+// Render channel list with the new grid layout
 function renderChannelList(filteredChannels = null) {
   const channelsToRender = filteredChannels || allChannels;
   
-  // Calculate the range of channels to display
-  const startIndex = currentPage * channelsPerPage;
-  const endIndex = startIndex + channelsPerPage;
-  const channelsSlice = channelsToRender.slice(0, endIndex);
-  
+  const channelsSlice = channelsToRender.slice(0, (currentPage + 1) * channelsPerPage);
+
   // Clear channel list only on first page or when filtering
   if (currentPage === 0 || filteredChannels) {
     channelList.innerHTML = '';
   }
   
-  channelsSlice.sort((a, b) => a.name.localeCompare(b.name));
-  
   channelsSlice.forEach(channel => {
     const channelCard = document.createElement('div');
     channelCard.className = 'channel-card';
+    channelCard.addEventListener('click', () => {
+      playChannel(channel);
+      document.querySelectorAll('.channel-card.active').forEach(c => c.classList.remove('active'));
+      channelCard.classList.add('active');
+    });
 
-    const leftContainer = document.createElement('div');
-    leftContainer.className = 'flex items-center cursor-pointer';
-    leftContainer.addEventListener('click', () => playChannel(channel));
 
     const logo = document.createElement('img');
     logo.className = 'channel-logo';
-    logo.src = getChannelLogo(channel.id, channel.logo); // Use fallback logic
+    logo.src = getChannelLogo(channel.id, channel.logo);
     logo.alt = `${channel.name} logo`;
-    logo.onerror = () => { logo.src = 'placeholder.png'; }; // Handle broken images
+    logo.onerror = () => { logo.src = 'placeholder.png'; };
 
     const name = document.createElement('span');
+    name.className = 'channel-name';
     name.textContent = channel.name;
-    leftContainer.append(logo, name);
-    channelCard.append(leftContainer);
 
-    // Show EPG button and sources info
-    /*
-    if (channel.id) { 
+    const cardOverlay = document.createElement('div');
+    cardOverlay.className = 'card-overlay';
+
+    // Show EPG button
+    if (channel.id && getGuideSources(channel.id).length > 0) {
       const epgButton = document.createElement('button');
       epgButton.className = 'icon-btn';
       epgButton.innerHTML = `<i class="fas fa-calendar-alt"></i>`;
-      epgButton.addEventListener('click', () => openEpgModal(channel));
-
-      const guideSources = getGuideSources(channel.id);
-      if (guideSources.length > 0) {
-        const guideInfo = document.createElement('span');
-        guideInfo.className = 'epg-guide-info';
-        guideInfo.title = 'EPG sources: ' + guideSources.map(g => g.name).join(', ');
-        guideInfo.innerHTML = `<i class="fas fa-info-circle"></i>`;
-        epgButton.appendChild(guideInfo);
-      }
-
-      channelCard.append(epgButton);
+      epgButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEpgModal(channel)
+      });
+      cardOverlay.appendChild(epgButton);
     } 
 
     // Show feeds icons
     const feeds = getFeeds(channel.id);
     if (feeds.length > 0) {
-      const feedsContainer = document.createElement('div');
-      feedsContainer.className = 'feeds-list';
       feeds.forEach(feed => {
         const a = document.createElement('a');
         a.href = feed.url;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
-        a.className = 'feed-icon';
+        a.className = 'icon-btn';
         a.title = feed.type;
         a.innerHTML = feed.type === 'website' ? '<i class="fas fa-globe"></i>' :
           feed.type === 'facebook' ? '<i class="fab fa-facebook"></i>' :
           feed.type === 'twitter' ? '<i class="fab fa-twitter"></i>' :
           '<i class="fas fa-link"></i>';
-        feedsContainer.appendChild(a);
+        a.addEventListener('click', (e) => e.stopPropagation());
+        cardOverlay.appendChild(a);
       });
-      channelCard.append(feedsContainer);
-    } */
+    }
 
+    channelCard.append(logo, name, cardOverlay);
     channelList.appendChild(channelCard);
   });
 
   channelCount.textContent = channelsToRender.length;
-  hasMoreChannels = endIndex < channelsToRender.length;
+  hasMoreChannels = channelsSlice.length < channelsToRender.length;
   isLoading = false;
 }
 
 // Fetch channels + extra metadata
-async function fetchChannels(page = 0) {
+async function fetchChannels() {
+  if (isLoading || !hasMoreChannels) return;
+
   try {
     isLoading = true;
     
@@ -204,35 +188,30 @@ async function fetchChannels(page = 0) {
       })
       .filter(Boolean);
 
-    // If it's the first page, replace all channels
-    if (page === 0) {
       allChannels = newChannels;
-      channels = [...newChannels];
-    } else {
-      // For subsequent pages, append to existing channels
-      allChannels = [...allChannels, ...newChannels];
-      channels = [...channels, ...newChannels];
-    }
+      allChannels.sort((a, b) => a.name.localeCompare(b.name));
+      renderChannelList();
+      loadingOverlay.style.display = 'none';
 
-    renderChannelList();
   } catch (error) {
     console.error('Error loading channels:', error);
     alert('Failed to load channels.');
     isLoading = false;
+    loadingOverlay.style.display = 'none';
   }
 }
 
 // Load more channels when scrolling
 function setupInfiniteScroll() {
-  channelList.addEventListener('scroll', () => {
+  channelListContainer.addEventListener('scroll', () => {
     if (isLoading || !hasMoreChannels) return;
     
-    const { scrollTop, scrollHeight, clientHeight } = channelList;
+    const { scrollTop, scrollHeight, clientHeight } = channelListContainer;
     
     // Load more when user is near the bottom
-    if (scrollTop + clientHeight >= scrollHeight - 100) {
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
       currentPage++;
-      fetchChannels(currentPage);
+      renderChannelList();
     }
   });
 }
@@ -247,9 +226,9 @@ addStreamBtn.addEventListener('click', () => {
   }
 
   const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png' };
-  channels.push(newChannel);
-  allChannels.push(newChannel);
-  renderChannelList();
+  allChannels.unshift(newChannel); // Add to the top of the list
+  currentPage = 0; // Reset to show from the beginning
+  renderChannelList(allChannels);
   playChannel(newChannel);
   newStreamUrlInput.value = '';
 });
@@ -259,15 +238,6 @@ async function openEpgModal(channel) {
   epgChannelName.textContent = channel.name;
   epgGuide.innerHTML = '<li>Loading...</li>';
   epgModal.classList.remove('hidden');
-
-  // Show guide source(s) info at top
-  const guideSources = getGuideSources(channel.id);
-  if (epgSourceInfo) {
-    epgSourceInfo.textContent =
-      guideSources.length > 0
-        ? "Guide sources: " + guideSources.map(g => g.name).join(', ')
-        : "No EPG sources found.";
-  }
 
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -299,14 +269,14 @@ searchInput.addEventListener('input', e => {
   const query = e.target.value.toLowerCase();
   const filtered = allChannels.filter(c => c.name.toLowerCase().includes(query));
   
-  // Reset pagination when searching
   currentPage = 0;
   renderChannelList(filtered);
 });
 
 // Initial load
 function initializeApp() {
-  fetchChannels(0);
+  loadingOverlay.style.display = 'flex';
+  fetchChannels();
   setupInfiniteScroll();
 }
 
