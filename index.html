@@ -8,6 +8,18 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    :root {
+      --primary-color: #3b82f6;
+      --background-dark: #0f172a;
+      --text-dark: #f1f5f9;
+      --background-light: #f8fafc;
+      --text-light: #0f172a;
+      --card-background-dark: #1e293b;
+      --card-border-dark: #334155;
+      --card-background-light: #ffffff;
+      --card-border-light: #e2e8f0;
+    }
+
     * {
       transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     }
@@ -15,16 +27,21 @@
     html, body {
       height: 100vh;
       margin: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
     }
 
     body.dark {
-      background-color: #0f172a;
-      color: #f1f5f9;
+      background-color: var(--background-dark);
+      color: var(--text-dark);
     }
 
     body.light {
-      background-color: #f8fafc;
-      color: #0f172a;
+      background-color: var(--background-light);
+      color: var(--text-light);
     }
 
     #app-container {
@@ -33,94 +50,96 @@
       min-height: 100%;
     }
 
-/* Add to existing styles */
-#channel-list {
-  flex-grow: 1;
-  overflow-y: auto;
-  max-height: 100%;
-}
-
-.loading-indicator {
-  text-align: center;
-  padding: 1rem;
-  color: #9ca3af;
-}
+    .loading-indicator {
+      text-align: center;
+      padding: 1rem;
+      color: #9ca3af;
+    }
 
     video {
       width: 100%;
+      height: auto;
       border-radius: 0.75rem;
       background-color: #000;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
 
+    #channel-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+
     .channel-card {
-      display: flex;
-      align-items: center;
-      padding: 1rem;
+      background-color: var(--card-background-dark);
+      border: 1px solid var(--card-border-dark);
       border-radius: 0.5rem;
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      justify-content: space-between;
-    }
-
-    .channel-card img {
-       object-fit: fill;
-    }
-
-    .dark .channel-card {
-      background-color: #1e293b;
-      border: 1px solid #334155;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
     }
 
     .light .channel-card {
-      background-color: #ffffff;
-      border: 1px solid #e2e8f0;
+      background-color: var(--card-background-light);
+      border: 1px solid var(--card-border-light);
     }
 
     .channel-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     .dark .channel-card:hover {
-      background-color: #334155;
-      border-color: #475569;
+      border-color: var(--primary-color);
     }
 
     .light .channel-card:hover {
-      background-color: #f1f5f9;
-      border-color: #cbd5e1;
+      border-color: var(--primary-color);
     }
 
     .channel-card.active {
-      border: 2px solid #3b82f6;
+      border: 2px solid var(--primary-color);
     }
 
     .channel-logo {
-      width: 48px;
-      height: 48px;
-      margin-right: 1rem;
+      width: 64px;
+      height: 64px;
       border-radius: 0.5rem;
-      object-fit: cover;
-      flex-shrink: 0;
+      object-fit: contain;
+      margin-bottom: 0.5rem;
+    }
+
+    .channel-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0 0.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .dark .input-field {
-      background-color: #1e293b;
-      border: 1px solid #334155;
-      color: #f1f5f9;
+      background-color: var(--card-background-dark);
+      border: 1px solid var(--card-border-dark);
+      color: var(--text-dark);
     }
 
     .light .input-field {
-      background-color: #ffffff;
-      border: 1px solid #cbd5e1;
-      color: #0f172a;
+      background-color: var(--card-background-light);
+      border: 1px solid var(--card-border-light);
+      color: var(--text-light);
     }
 
     .input-field:focus {
       outline: none;
-      border-color: #3b82f6;
+      border-color: var(--primary-color);
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
@@ -152,44 +171,12 @@
       background-color: #fbbf24;
     }
 
-    #video-container {
-      position: relative;
-    }
-
-    .video-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 1.5rem;
-      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-      border-radius: 0 0 0.75rem 0.75rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .dark .badge-live {
-      background-color: #dc2626;
-      color: white;
-    }
-
-    .light .badge-live {
-      background-color: #ef4444;
-      color: white;
-    }
-
     .scrollbar-thin::-webkit-scrollbar {
       width: 6px;
     }
 
     .dark .scrollbar-thin::-webkit-scrollbar-track {
-      background: #1e293b;
+      background: var(--card-background-dark);
     }
 
     .light .scrollbar-thin::-webkit-scrollbar-track {
@@ -207,39 +194,74 @@
     }
 
     .dark .modal-bg {
-      background-color: #1e293b;
+      background-color: var(--card-background-dark);
     }
 
     .light .modal-bg {
-      background-color: #ffffff;
+      background-color: var(--card-background-light);
     }
 
-    @media (max-width: 768px) {
-      #main-content {
-        flex-direction: column;
-      }
-      
-      #video-section {
-        order: 1;
-      }
-      
-      #channels-section {
-        order: 2;
-      }
+    .card-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .channel-card:hover .card-overlay {
+      opacity: 1;
+    }
+
+    .icon-btn {
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .icon-btn:hover {
+      background-color: var(--primary-color);
     }
   </style>
 </head>
 <body class="dark">
   <div id="app-container">
     <!-- Header -->
-    <header class="sticky top-0 z-50 backdrop-blur-lg border-b" style="background-color: rgba(15, 23, 42, 0.8);">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header class="sticky top-0 z-50 backdrop-blur-lg border-b dark:border-gray-700 light:border-gray-200" style="background-color: rgba(15, 23, 42, 0.8);">
+      <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-3">
-            <i class="fas fa-tv text-3xl text-blue-500"></i>
+            <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
             <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">REBELTV</h1>
           </div>
           
+          <div class="flex-1 flex justify-center px-4">
+            <div class="w-full max-w-md">
+              <div class="relative">
+                <input
+                  id="search-channels"
+                  type="text"
+                  placeholder="Search for channels..."
+                  class="w-full input-field rounded-full py-2 px-4 pl-10" />
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              </div>
+            </div>
+          </div>
+
           <div class="flex items-center space-x-4">
             <span class="text-sm hidden sm:inline" id="theme-label">Dark Mode</span>
             <div class="theme-toggle" id="theme-toggle">
@@ -251,46 +273,28 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div id="main-content" class="flex flex-col lg:flex-row gap-6">
+    <main class="flex-grow max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div id="main-content" class="flex flex-col xl:flex-row gap-6">
         
         <!-- Video Section -->
-        <div id="video-section" class="w-full lg:w-2/3">
-          <div id="video-container" class="rounded-xl overflow-hidden">
-            <video id="video-player" controls></video>
-            <div class="video-overlay hidden" id="video-info">
-              <div class="flex items-center justify-between">
-                <div>
-                  <span class="badge badge-live"><i class="fas fa-circle text-xs mr-1"></i>LIVE</span>
-                  <h3 class="text-xl font-bold mt-2 text-white" id="current-channel-name">Select a channel</h3>
-                </div>
-              </div>
-            </div>
+        <div id="video-section" class="w-full xl:w-2/3 xl:sticky top-24 self-start">
+          <div id="video-container" class="rounded-xl overflow-hidden shadow-2xl">
+            <video id="video-player" class="aspect-video" controls></video>
           </div>
           
           <!-- Now Playing Info Card -->
-          <div class="mt-4 p-4 rounded-lg" id="now-playing-card">
-            <h3 class="font-semibold text-lg mb-2">Now Playing</h3>
-            <p class="text-sm opacity-75" id="now-playing-description">Select a channel to start streaming</p>
+          <div class="mt-4 p-4 rounded-lg dark:bg-gray-800 light:bg-white" id="now-playing-card">
+            <h3 class="font-semibold text-xl mb-1" id="now-playing-title">Select a channel</h3>
+            <p class="text-sm opacity-75" id="now-playing-description">Start by choosing a channel from the list</p>
           </div>
         </div>
 
         <!-- Channels Section -->
-        <div id="channels-section" class="w-full lg:w-1/3 flex flex-col">
-          <!-- Search Bar -->
-          <div class="relative mb-4">
-            <input 
-              id="search-channels"
-              type="text" 
-              placeholder="Search channels..."
-              class="w-full input-field rounded-lg p-3 pl-10" />
-            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          </div>
-
+        <div id="channels-section" class="w-full xl:w-1/3">
           <!-- Add Stream -->
-          <div class="mb-4 p-4 rounded-lg border" id="add-stream-container">
+          <div class="mb-4 p-4 rounded-lg border dark:border-gray-700 light:border-gray-200" id="add-stream-container">
             <label class="block text-sm font-semibold mb-2">
-              <i class="fas fa-plus-circle mr-2"></i>Add New Stream
+              <i class="fas fa-plus-circle mr-2"></i>Add Custom Stream URL
             </label>
             <div class="flex gap-2">
               <input
@@ -300,30 +304,32 @@
                 class="flex-1 input-field rounded-lg p-2 text-sm" />
               <button
                 id="add-stream-btn"
-                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
-                <i class="fas fa-plus"></i>
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold">
+                Add
               </button>
             </div>
           </div>
 
           <!-- Channel List -->
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-bold">
+            <h2 class="text-xl font-bold">
               Channels (<span id="channel-count">0</span>)
             </h2>
           </div>
           
-          <div id="channel-list" class="space-y-2 overflow-y-auto scrollbar-thin pr-2" style="max-height: 600px;">
-            <!-- Channels dynamically populated -->
-            <div class="loading-indicator"></div>
+          <div id="channel-list-container" class="overflow-y-auto scrollbar-thin pr-2" style="max-height: calc(100vh - 250px);">
+            <div id="channel-list">
+              <!-- Grid of channels will be populated here -->
+              <div class="loading-indicator"></div>
+            </div>
           </div>
         </div>
       </div>
     </main>
 
     <!-- Footer -->
-    <footer class="mt-auto border-t py-4">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm opacity-60">
+    <footer class="mt-auto border-t py-4 dark:border-gray-700 light:border-gray-200">
+      <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm opacity-60">
         <p>&copy; 2025 REBELTV. All rights reserved.</p>
       </div>
     </footer>
@@ -349,9 +355,6 @@
     const themeLabel = document.getElementById('theme-label');
     const body = document.body;
     const header = document.querySelector('header');
-    const footer = document.querySelector('footer');
-    const addStreamContainer = document.getElementById('add-stream-container');
-    const nowPlayingCard = document.getElementById('now-playing-card');
 
     // Load saved theme
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -371,33 +374,14 @@
         themeToggle.classList.add('active');
         themeLabel.textContent = 'Light Mode';
         header.style.backgroundColor = 'rgba(248, 250, 252, 0.8)';
-        header.classList.remove('border-b');
-        header.style.borderBottom = '1px solid #e2e8f0';
-        footer.style.borderTop = '1px solid #e2e8f0';
-        addStreamContainer.style.borderColor = '#e2e8f0';
-        addStreamContainer.style.backgroundColor = '#ffffff';
-        if (nowPlayingCard.style.display !== 'none') {
-          nowPlayingCard.style.backgroundColor = '#ffffff';
-          nowPlayingCard.style.border = '1px solid #e2e8f0';
-        }
       } else {
         body.classList.remove('light');
         body.classList.add('dark');
         themeToggle.classList.remove('active');
         themeLabel.textContent = 'Dark Mode';
         header.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
-        header.style.borderBottom = '1px solid #334155';
-        footer.style.borderTop = '1px solid #334155';
-        addStreamContainer.style.borderColor = '#334155';
-        addStreamContainer.style.backgroundColor = '#1e293b';
-        if (nowPlayingCard.style.display !== 'none') {
-          nowPlayingCard.style.backgroundColor = '#1e293b';
-          nowPlayingCard.style.border = '1px solid #334155';
-        }
       }
     }
-
-
   </script>
 </body>
 </html>
