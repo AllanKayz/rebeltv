@@ -1,4 +1,5 @@
 // Select DOM elements
+const loadingOverlay = document.getElementById('loading-overlay');
 const videoPlayer = document.getElementById('video-player');
 const channelList = document.getElementById('channel-list');
 const channelListContainer = document.getElementById('channel-list-container');
@@ -76,6 +77,7 @@ function renderChannelList(filteredChannels = null) {
   channelsSlice.forEach(channel => {
     const channelCard = document.createElement('div');
     channelCard.className = 'channel-card';
+    channelCard.dataset.channelId = channel.id;
     channelCard.addEventListener('click', () => {
       playChannel(channel);
       document.querySelectorAll('.channel-card.active').forEach(c => c.classList.remove('active'));
@@ -134,68 +136,110 @@ function renderChannelList(filteredChannels = null) {
   channelCount.textContent = channelsToRender.length;
   hasMoreChannels = channelsSlice.length < channelsToRender.length;
   isLoading = false;
+
+  // Hide loading overlay after first render
+  if (!loadingOverlay.classList.contains('hidden')) {
+    loadingOverlay.classList.add('hidden');
+  }
 }
 
-// Fetch channels + extra metadata
+// Optimized channel fetching
 async function fetchChannels() {
-  if (isLoading || !hasMoreChannels) return;
+  if (isLoading) return;
+  isLoading = true;
 
   try {
-    isLoading = true;
-    
-    const [streamsRes, channelsRes, channelLogosRes, guidesRes, feedsRes] = await Promise.all([
+    // Step 1: Fetch essential data (streams and channels)
+    const [streamsRes, channelsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/streams.json'),
       fetch('https://iptv-org.github.io/api/channels.json'),
+    ]);
+    const streams = await streamsRes.json();
+    const channelData = await channelsRes.json();
+    const channelsMap = new Map(channelData.map(c => [c.id, c]));
+
+    // Map streams to channels
+    allChannels = streams
+      .map(stream => {
+        const channelInfo = channelsMap.get(stream.channel);
+        return channelInfo ? {
+          name: channelInfo.name,
+          url: stream.url,
+          logo: channelInfo.logo,
+          id: channelInfo.id,
+        } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Initial render with basic channel info
+    renderChannelList();
+
+    // Step 2: Fetch supplementary data in the background
+    fetchSupplementaryData();
+
+  } catch (error) {
+    console.error('Error loading initial channels:', error);
+    alert('Failed to load channels. Please try again later.');
+  } finally {
+    isLoading = false;
+  }
+}
+
+// Fetch logos, guides, and feeds asynchronously
+async function fetchSupplementaryData() {
+  try {
+    const [logosRes, guidesRes, feedsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/logos.json'),
       fetch('https://iptv-org.github.io/api/guides.json'),
       fetch('https://iptv-org.github.io/api/feeds.json'),
     ]);
-
-    const streams = await streamsRes.json();
-    const channelData = await channelsRes.json();
-    const channelLogos = await channelLogosRes.json();
+    const logos = await logosRes.json();
     const guides = await guidesRes.json();
     const feeds = await feedsRes.json();
 
-    const channelsMap = new Map(channelData.map(c => [c.id, c]));
-    channelLogosMap = {};
-    channelLogos.forEach(l => { channelLogosMap[l.channel] = l.url; });
+    // Process logos
+    logos.forEach(l => { channelLogosMap[l.channel] = l.url; });
 
-    guidesByChannel = {};
+    // Process guides
     guides.forEach(g => {
       if (!guidesByChannel[g.channel]) guidesByChannel[g.channel] = [];
       guidesByChannel[g.channel].push(g);
     });
 
-    feedsByChannel = {};
+    // Process feeds
     feeds.forEach(f => {
       if (!feedsByChannel[f.channel]) feedsByChannel[f.channel] = [];
       feedsByChannel[f.channel].push(f);
     });
 
-    const newChannels = streams
-      .map(stream => {
-        const channelInfo = channelsMap.get(stream.channel);
-        if (!channelInfo) return null;
-
-        return {
-          name: channelInfo.name,
-          url: stream.url,
-          logo: channelInfo.logo,
-          id: channelInfo.id,
-        };
-      })
-      .filter(Boolean);
-
-      allChannels = newChannels;
-      allChannels.sort((a, b) => a.name.localeCompare(b.name));
-      renderChannelList();
+    // Re-render the visible channels to update logos and EPG buttons
+    updateVisibleChannels();
 
   } catch (error) {
-    console.error('Error loading channels:', error);
-    alert('Failed to load channels.');
-    isLoading = false;
+    console.error('Error loading supplementary channel data:', error);
   }
+}
+
+function updateVisibleChannels() {
+  const visibleCards = Array.from(channelList.querySelectorAll('.channel-card'));
+
+  visibleCards.forEach(card => {
+    // This requires a way to link card back to channel data.
+    // A simple approach is to re-render, but for performance,
+    // let's add a data attribute to the card.
+    const channelId = card.dataset.channelId;
+    if (!channelId) return;
+
+    const logoEl = card.querySelector('.channel-logo');
+    const newLogo = getChannelLogo(channelId);
+    if (logoEl && newLogo && logoEl.src !== newLogo) {
+      logoEl.src = newLogo;
+    }
+
+    // You could also dynamically add EPG buttons here if they weren't rendered initially.
+    // For simplicity, we'll rely on the initial render which can be updated on next scroll/filter.
+  });
 }
 
 // Load more channels when scrolling
@@ -272,6 +316,7 @@ searchInput.addEventListener('input', e => {
 
 // Initial load
 function initializeApp() {
+  loadingOverlay.classList.remove('hidden');
   fetchChannels();
   setupInfiniteScroll();
 }
