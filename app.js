@@ -1,9 +1,7 @@
 // Select DOM elements
 const loadingOverlay = document.getElementById('loading-overlay');
 const videoPlayer = document.getElementById('video-player');
-const channelList = document.getElementById('channel-list');
-const channelListContainer = document.getElementById('channel-list-container');
-const channelCount = document.getElementById('channel-count');
+const channelGrid = document.getElementById('channel-grid');
 const searchInput = document.getElementById('search-channels');
 const newStreamUrlInput = document.getElementById('new-stream-url');
 const addStreamBtn = document.getElementById('add-stream-btn');
@@ -14,80 +12,94 @@ const closeEpgModal = document.getElementById('close-epg-modal');
 const nowPlayingTitle = document.getElementById('now-playing-title');
 const nowPlayingDescription = document.getElementById('now-playing-description');
 
-let allChannels = []; // Store all channels for filtering
-let currentPage = 0;
-const channelsPerPage = 50;
-let isLoading = false;
-let hasMoreChannels = true;
-
-// Extra metadata holders
+let allChannels = [];
 let channelLogosMap = {};
-let guidesByChannel = {};
-let feedsByChannel = {};
 
 // Initialize video player
 function playChannel(channel) {
   const { url, name } = channel;
 
-  // Update now playing info
   nowPlayingTitle.textContent = name;
   nowPlayingDescription.textContent = `Currently playing ${name}. Enjoy the stream!`;
 
-  // Set up the video player
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(videoPlayer);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayer.play());
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      videoPlayer.play().catch(e => console.error("Autoplay was prevented:", e));
+    });
   } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
     videoPlayer.src = url;
-    videoPlayer.addEventListener('loadedmetadata', () => videoPlayer.play());
+    videoPlayer.addEventListener('loadedmetadata', () => {
+      videoPlayer.play().catch(e => console.error("Autoplay was prevented:", e));
+    });
   } else {
     alert('HLS streaming not supported.');
   }
 }
 
-// Get logo using channels.json > logos.json fallback
-function getChannelLogo(channelId, primaryLogo) {
-  if (primaryLogo) return primaryLogo;
-  return channelLogosMap[channelId] || 'placeholder.png';
+// Get logo, using primary logo first, then the logos map, finally a placeholder
+function getChannelLogo(channel) {
+  return channel.logo || channelLogosMap[channel.id] || 'placeholder.png';
 }
 
-// Get guides for a channel
-function getGuideSources(channelId) {
-  return guidesByChannel[channelId] || [];
-}
+// Render channel grid with categorized rows
+function renderChannelGrid(channelsToRender = null) {
+  channelGrid.innerHTML = '';
 
-// Get feeds for channel
-function getFeeds(channelId) {
-  return feedsByChannel[channelId] || [];
-}
+  const channels = channelsToRender || allChannels;
 
-// Render channel list with the new grid layout
-function renderChannelList(filteredChannels = null) {
-  const channelsToRender = filteredChannels || allChannels;
-  
-  const channelsSlice = channelsToRender.slice(0, (currentPage + 1) * channelsPerPage);
+  if (channelsToRender) {
+    // Render a single grid for search results
+    const searchResultRow = createChannelRow('Search Results', channels);
+    channelGrid.appendChild(searchResultRow);
+  } else {
+    // Group channels by category for the main view
+    const channelsByCategory = channels.reduce((acc, channel) => {
+      const category = channel.category || 'General';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(channel);
+      return acc;
+    }, {});
 
-  // Clear channel list only on first page or when filtering
-  if (currentPage === 0 || filteredChannels) {
-    channelList.innerHTML = '';
+    // Create a row for each category
+    for (const category in channelsByCategory) {
+      const row = createChannelRow(category, channelsByCategory[category]);
+      channelGrid.appendChild(row);
+    }
   }
-  
-  channelsSlice.forEach(channel => {
-    const channelCard = document.createElement('div');
-    channelCard.className = 'channel-card';
-    channelCard.dataset.channelId = channel.id;
-    channelCard.addEventListener('click', () => {
-      playChannel(channel);
-      document.querySelectorAll('.channel-card.active').forEach(c => c.classList.remove('active'));
-      channelCard.classList.add('active');
-    });
 
+  // Hide loading overlay
+  if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
+    loadingOverlay.classList.add('hidden');
+  }
+}
+
+// Create a single channel row (category)
+function createChannelRow(title, channels) {
+  const row = document.createElement('div');
+  row.className = 'channel-row';
+
+  const rowTitle = document.createElement('h2');
+  rowTitle.className = 'channel-row-title';
+  rowTitle.textContent = title;
+
+  const list = document.createElement('div');
+  list.className = 'channel-list';
+
+  channels.forEach(channel => {
+    const card = document.createElement('div');
+    card.className = 'channel-card';
+    card.addEventListener('click', () => playChannel(channel));
 
     const logo = document.createElement('img');
     logo.className = 'channel-logo';
-    logo.src = getChannelLogo(channel.id, channel.logo);
+    logo.src = getChannelLogo(channel);
     logo.alt = `${channel.name} logo`;
     logo.onerror = () => { logo.src = 'placeholder.png'; };
 
@@ -98,58 +110,57 @@ function renderChannelList(filteredChannels = null) {
     const cardOverlay = document.createElement('div');
     cardOverlay.className = 'card-overlay';
 
-    // Show EPG button
-    if (channel.id && getGuideSources(channel.id).length > 0) {
+    if (channel.guides && channel.guides.length > 0) {
       const epgButton = document.createElement('button');
       epgButton.className = 'icon-btn';
       epgButton.innerHTML = `<i class="fas fa-calendar-alt"></i>`;
       epgButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        openEpgModal(channel)
+        openEpgModal(channel);
       });
       cardOverlay.appendChild(epgButton);
-    } 
-
-    // Show feeds icons
-    const feeds = getFeeds(channel.id);
-    if (feeds.length > 0) {
-      feeds.forEach(feed => {
-        const a = document.createElement('a');
-        a.href = feed.url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.className = 'icon-btn';
-        a.title = feed.type;
-        a.innerHTML = feed.type === 'website' ? '<i class="fas fa-globe"></i>' :
-          feed.type === 'facebook' ? '<i class="fab fa-facebook"></i>' :
-          feed.type === 'twitter' ? '<i class="fab fa-twitter"></i>' :
-          '<i class="fas fa-link"></i>';
-        a.addEventListener('click', (e) => e.stopPropagation());
-        cardOverlay.appendChild(a);
-      });
     }
 
-    channelCard.append(logo, name, cardOverlay);
-    channelList.appendChild(channelCard);
+    card.append(logo, name, cardOverlay);
+    list.appendChild(card);
   });
 
-  channelCount.textContent = channelsToRender.length;
-  hasMoreChannels = channelsSlice.length < channelsToRender.length;
-  isLoading = false;
+  row.append(rowTitle, list);
+  return row;
+}
 
-  // Hide loading overlay after first render
-  if (!loadingOverlay.classList.contains('hidden')) {
-    loadingOverlay.classList.add('hidden');
+// EPG Modal Functions
+async function openEpgModal(channel) {
+  epgChannelName.textContent = channel.name;
+  epgGuide.innerHTML = '<li>Loading...</li>';
+  epgModal.classList.remove('hidden');
+
+  try {
+    const programs = channel.guides;
+
+    epgGuide.innerHTML = '';
+    if (programs && programs.length > 0) {
+      programs.forEach(program => {
+        const item = document.createElement('li');
+        item.textContent = `${new Date(program.start).toLocaleTimeString()} - ${program.title}`;
+        epgGuide.appendChild(item);
+      });
+    } else {
+      epgGuide.innerHTML = '<li>No program guide available.</li>';
+    }
+  } catch (error) {
+    console.error('Error processing EPG data:', error);
+    epgGuide.innerHTML = '<li>Error loading guide.</li>';
   }
 }
 
-// Optimized channel fetching
-async function fetchChannels() {
-  if (isLoading) return;
-  isLoading = true;
+closeEpgModal.addEventListener('click', () => {
+  epgModal.classList.add('hidden');
+});
 
+// Fetch essential data first, then supplementary data
+async function fetchData() {
   try {
-    // Step 1: Fetch essential data (streams and channels)
     const [streamsRes, channelsRes] = await Promise.all([
       fetch('https://iptv-org.github.io/api/streams.json'),
       fetch('https://iptv-org.github.io/api/channels.json'),
@@ -158,104 +169,67 @@ async function fetchChannels() {
     const channelData = await channelsRes.json();
     const channelsMap = new Map(channelData.map(c => [c.id, c]));
 
-    // Map streams to channels
     allChannels = streams
       .map(stream => {
         const channelInfo = channelsMap.get(stream.channel);
-        return channelInfo ? {
-          name: channelInfo.name,
-          url: stream.url,
-          logo: channelInfo.logo,
-          id: channelInfo.id,
-        } : null;
+        return channelInfo ? { ...channelInfo, url: stream.url, guides: [] } : null;
       })
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Initial render with basic channel info
-    renderChannelList();
-
-    // Step 2: Fetch supplementary data in the background
+    renderChannelGrid();
     fetchSupplementaryData();
 
   } catch (error) {
-    console.error('Error loading initial channels:', error);
-    alert('Failed to load channels. Please try again later.');
-  } finally {
-    isLoading = false;
+    console.error('Error loading initial channel data:', error);
+    channelGrid.innerHTML = '<p class="text-red-500">Failed to load channels. See console for details.</p>';
+    if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
+      loadingOverlay.classList.add('hidden');
+    }
   }
 }
 
-// Fetch logos, guides, and feeds asynchronously
 async function fetchSupplementaryData() {
   try {
-    const [logosRes, guidesRes, feedsRes] = await Promise.all([
-      fetch('https://iptv-org.github.io/api/logos.json'),
-      fetch('https://iptv-org.github.io/api/guides.json'),
-      fetch('https://iptv-org.github.io/api/feeds.json'),
-    ]);
-    const logos = await logosRes.json();
-    const guides = await guidesRes.json();
-    const feeds = await feedsRes.json();
+      const [logosRes, guidesRes] = await Promise.all([
+          fetch('https://iptv-org.github.io/api/logos.json'),
+          fetch('https://iptv-org.github.io/api/guides.json')
+      ]);
+      const logos = await logosRes.json();
+      const guides = await guidesRes.json();
 
-    // Process logos
-    logos.forEach(l => { channelLogosMap[l.channel] = l.url; });
+      logos.forEach(l => { channelLogosMap[l.channel] = l.url; });
 
-    // Process guides
-    guides.forEach(g => {
-      if (!guidesByChannel[g.channel]) guidesByChannel[g.channel] = [];
-      guidesByChannel[g.channel].push(g);
-    });
+      const guidesByChannel = guides.reduce((acc, guide) => {
+          if (!acc[guide.channel]) acc[guide.channel] = [];
+          acc[guide.channel].push(guide);
+          return acc;
+      }, {});
 
-    // Process feeds
-    feeds.forEach(f => {
-      if (!feedsByChannel[f.channel]) feedsByChannel[f.channel] = [];
-      feedsByChannel[f.channel].push(f);
-    });
+      allChannels.forEach(channel => {
+          if (guidesByChannel[channel.id]) {
+              channel.guides = guidesByChannel[channel.id];
+          }
+      });
 
-    // Re-render the visible channels to update logos and EPG buttons
-    updateVisibleChannels();
+      renderChannelGrid();
 
   } catch (error) {
-    console.error('Error loading supplementary channel data:', error);
+      console.error('Error loading supplementary channel data:', error);
   }
 }
 
-function updateVisibleChannels() {
-  const visibleCards = Array.from(channelList.querySelectorAll('.channel-card'));
+// Search functionality
+searchInput.addEventListener('input', e => {
+  const query = e.target.value.toLowerCase().trim();
 
-  visibleCards.forEach(card => {
-    // This requires a way to link card back to channel data.
-    // A simple approach is to re-render, but for performance,
-    // let's add a data attribute to the card.
-    const channelId = card.dataset.channelId;
-    if (!channelId) return;
-
-    const logoEl = card.querySelector('.channel-logo');
-    const newLogo = getChannelLogo(channelId);
-    if (logoEl && newLogo && logoEl.src !== newLogo) {
-      logoEl.src = newLogo;
-    }
-
-    // You could also dynamically add EPG buttons here if they weren't rendered initially.
-    // For simplicity, we'll rely on the initial render which can be updated on next scroll/filter.
-  });
-}
-
-// Load more channels when scrolling
-function setupInfiniteScroll() {
-  channelListContainer.addEventListener('scroll', () => {
-    if (isLoading || !hasMoreChannels) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = channelListContainer;
-    
-    // Load more when user is near the bottom
-    if (scrollTop + clientHeight >= scrollHeight - 200) {
-      currentPage++;
-      renderChannelList();
-    }
-  });
-}
+  if (query) {
+    const filtered = allChannels.filter(c => c.name.toLowerCase().includes(query));
+    renderChannelGrid(filtered);
+  } else {
+    renderChannelGrid();
+  }
+});
 
 // Add and play a new stream
 addStreamBtn.addEventListener('click', () => {
@@ -266,82 +240,42 @@ addStreamBtn.addEventListener('click', () => {
     return;
   }
 
-  const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png' };
-  allChannels.unshift(newChannel); // Add to the top of the list
-  currentPage = 0; // Reset to show from the beginning
-  renderChannelList(allChannels);
+  const newChannel = { name: 'Custom Stream', url: url, logo: 'placeholder.png', category: 'Custom' };
+  allChannels.unshift(newChannel);
+  renderChannelGrid();
   playChannel(newChannel);
   newStreamUrlInput.value = '';
 });
 
-// EPG Modal Functions
-async function openEpgModal(channel) {
-  epgChannelName.textContent = channel.name;
-  epgGuide.innerHTML = '<li>Loading...</li>';
-  epgModal.classList.remove('hidden');
+// Theme Toggle
+const themeToggle = document.getElementById('theme-toggle');
+const body = document.body;
 
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const response = await fetch(`https://iptv-org.github.io/api/guides.json?channel=${channel.id}&date=${today}`);
-    const programs = await response.json();
+const savedTheme = localStorage.getItem('theme') || 'dark';
+setTheme(savedTheme);
 
-    epgGuide.innerHTML = '';
-    if (programs.length > 0) {
-      programs.forEach(program => {
-        const item = document.createElement('li');
-        item.textContent = `${new Date(program.start).toLocaleTimeString()} - ${program.title}`;
-        epgGuide.appendChild(item);
-      });
-    } else {
-      epgGuide.innerHTML = '<li>No program guide available.</li>';
-    }
-  } catch (error) {
-    console.error('Error fetching EPG data:', error);
-    epgGuide.innerHTML = '<li>Error loading guide.</li>';
+themeToggle.addEventListener('click', () => {
+  const currentTheme = body.classList.contains('dark') ? 'dark' : 'light';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  setTheme(newTheme);
+  localStorage.setItem('theme', newTheme);
+});
+
+function setTheme(theme) {
+  if (theme === 'light') {
+    body.classList.remove('dark');
+    body.classList.add('light');
+    themeToggle.classList.add('active');
+  } else {
+    body.classList.remove('light');
+    body.classList.add('dark');
+    themeToggle.classList.remove('active');
   }
 }
 
-closeEpgModal.addEventListener('click', () => {
-  epgModal.classList.add('hidden');
-});
-
-// Search functionality
-searchInput.addEventListener('input', e => {
-  const query = e.target.value.toLowerCase();
-  const filtered = allChannels.filter(c => c.name.toLowerCase().includes(query));
-  
-  currentPage = 0;
-  renderChannelList(filtered);
-});
-
 // Initial load
 function initializeApp() {
-  loadingOverlay.classList.remove('hidden');
-  fetchChannels();
-  setupInfiniteScroll();
-
-  let deferredPrompt;
-  const installButton = document.getElementById('install-button');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installButton.classList.remove('hidden');
-  });
-
-  installButton.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      deferredPrompt = null;
-      installButton.classList.add('hidden');
-    }
-  });
+  fetchData();
 }
 
 initializeApp();
