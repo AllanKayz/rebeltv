@@ -5,251 +5,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REBELTV Streaming App</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#e50914">
+  <meta name="theme-color" content="#e5a00d">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    :root {
-      --primary-color: #e50914;
-      --background-dark: #141414;
-      --text-dark: #ffffff;
-      --card-background-dark: #2a2a2a;
+    body.dark {
+        --primary-color: #e5a00d;
+        --background-color: #141414;
+        --text-color: #ffffff;
+        --card-background-color: #1f1f1f;
     }
-
-    * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    body.light {
+        --primary-color: #e5a00d;
+        --background-color: #ffffff;
+        --text-color: #000000;
+        --card-background-color: #f0f0f0;
     }
-
-    html, body {
-      height: 100vh;
-      margin: 0;
-      scroll-behavior: smooth;
-    }
-
     body {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      background-color: var(--background-dark);
-      color: var(--text-dark);
+        background-color: var(--background-color);
+        color: var(--text-color);
     }
-
-    #app-container {
-      display: flex;
-      flex-direction: column;
-      min-height: 100%;
-    }
-
-    video {
-      width: 100%;
-      height: auto;
-      background-color: #000;
-    }
-
-    .channel-row {
-      margin-bottom: 2rem;
-    }
-
-    .channel-row-title {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
-    }
-
-    .channel-list {
-      display: flex;
-      overflow-x: auto;
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none;  /* IE 10+ */
-    }
-
-    .channel-list::-webkit-scrollbar {
-      display: none; /* Safari and Chrome */
-    }
-
     .channel-card {
-      background-color: var(--card-background-dark);
-      border-radius: 0.25rem;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
+      flex: 0 0 auto;
       width: 180px;
-      height: 100px;
-      margin-right: 0.5rem;
-      flex-shrink: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      height: 270px;
+      transition: transform 0.3s;
+      background-color: var(--card-background-color);
     }
-
     .channel-card:hover {
       transform: scale(1.05);
-      z-index: 10;
     }
-
-    .channel-logo {
-      max-width: 80%;
-      max-height: 80%;
-      object-fit: contain;
-    }
-
-    .channel-name {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 0.5rem;
-      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-      text-align: center;
-      font-weight: bold;
-      opacity: 0;
-    }
-
-    .channel-card:hover .channel-name {
-      opacity: 1;
-    }
-
-    .card-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+    .category-row {
       display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      overflow-x: auto;
+      padding-bottom: 1rem;
     }
-
-    .channel-card:hover .card-overlay {
-      opacity: 1;
+    .category-row::-webkit-scrollbar {
+      display: none;
     }
-
-    .icon-btn {
-      background-color: rgba(0, 0, 0, 0.5);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
+    #video-player-container {
+        position: sticky;
+        top: 4rem; /* Height of the header */
+        z-index: 40; /* Below the header */
     }
-
-    .icon-btn:hover {
-      background-color: var(--primary-color);
+    .bg-primary-color {
+        background-color: var(--primary-color);
     }
-
-    .dark .modal-bg {
-      background-color: var(--card-background-dark);
-    }
-
-    .dark .input-field {
-      background-color: var(--card-background-dark);
-      color: var(--text-dark);
-    }
-
-    .light {
-      --background-dark: #f8fafc;
-      --text-dark: #0f172a;
-      --card-background-dark: #ffffff;
-    }
-
-    .theme-toggle {
-      width: 60px;
-      height: 30px;
-      background-color: #475569;
-      border-radius: 15px;
-      position: relative;
-      cursor: pointer;
-    }
-
-    .theme-toggle-slider {
-      width: 26px;
-      height: 26px;
-      background-color: white;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      transition: transform 0.3s ease;
-    }
-
-    .theme-toggle.active .theme-toggle-slider {
-      transform: translateX(30px);
-    }
-
-    .light .theme-toggle {
-      background-color: #fbbf24;
-    }
-
-    .input-field:focus {
-      outline: none;
+    #epg-modal {
+        background-color: rgba(0, 0, 0, 0.8);
     }
   </style>
 </head>
-<body class="dark">
-  <div id="loading-overlay" class="fixed inset-0 bg-black flex items-center justify-center z-50">
-    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-red-600"></div>
+<body class="dark font-sans">
+  <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary-color"></div>
   </div>
-
-  <div id="app-container">
-    <header class="sticky top-0 z-50 bg-black bg-opacity-80">
+  <div id="app-container" class="flex flex-col min-h-screen">
+    <header class="bg-black bg-opacity-80 sticky top-0 z-50">
       <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-3">
-            <h1 class="text-3xl font-bold text-red-600">REBELTV</h1>
+            <h1 class="text-3xl font-bold text-primary-color" style="color: var(--primary-color);">REBELTV</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-              <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="bg-transparent border border-gray-600 rounded-md py-1 px-3 text-white focus:outline-none focus:border-red-600">
-              <button id="add-stream-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md">Add</button>
-            </div>
-            <input id="search-channels" type="text" placeholder="Search..." class="bg-transparent border border-gray-600 rounded-md py-1 px-3 text-white focus:outline-none focus:border-red-600">
-            <div class="theme-toggle" id="theme-toggle">
-              <div class="theme-toggle-slider"></div>
+            <button id="epg-button" class="bg-primary-color hover:bg-opacity-80 text-white font-bold py-1 px-3 rounded-md">EPG</button>
+            <button id="install-button" class="hidden bg-primary-color hover:bg-opacity-80 text-white font-bold py-1 px-3 rounded-md">Install App</button>
+            <input id="search-channels" type="text" placeholder="Search..." class="bg-transparent border border-gray-600 rounded-md py-1 px-3 focus:outline-none focus:border-primary-color">
+            <div id="theme-toggle" class="cursor-pointer">
+              <i class="fas fa-sun text-2xl"></i>
             </div>
           </div>
         </div>
       </div>
     </header>
 
-    <main class="flex-grow">
-      <div id="video-section" class="w-full">
-        <video id="video-player" class="w-full" controls autoplay></video>
-        <div class="p-4">
-          <h2 id="now-playing-title" class="text-2xl font-bold">Select a Channel</h2>
-          <p id="now-playing-description" class="text-gray-400">Choose a channel to start watching.</p>
+    <main class="flex-1 p-4">
+        <div id="video-player-container" class="hidden w-full mb-8">
+            <video id="video-player" class="w-full" controls autoplay></video>
         </div>
-      </div>
 
-      <div id="channel-grid" class="p-4">
-        <!-- Channel rows will be dynamically inserted here -->
-      </div>
+        <div id="add-stream-section" class="mb-8">
+            <div class="flex space-x-2">
+                <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="flex-grow bg-transparent border border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:border-primary-color">
+                <button id="add-stream-btn" class="bg-primary-color hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md">Add Stream</button>
+            </div>
+        </div>
+
+        <div id="channels-container" class="space-y-8">
+            <!-- Categories and channels will be dynamically inserted here -->
+        </div>
+        <button id="load-more-btn" class="w-full mt-4 bg-primary-color hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md">Load More</button>
     </main>
-
-    <footer class="mt-auto py-4">
-      <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm opacity-60">
-        <p>&copy; 2025 REBELTV. All rights reserved.</p>
-      </div>
-    </footer>
   </div>
-  <script src="app.js"></script>
+
   <!-- EPG Modal -->
-  <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
-    <div class="modal-bg p-6 rounded-xl max-w-2xl w-full mx-4 shadow-2xl">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl font-bold" id="epg-channel-name"></h2>
-        <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div id="epg-guide" class="overflow-y-auto" style="max-height: 400px;"></div>
+  <div id="epg-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="bg-card-background-dark rounded-lg shadow-lg p-6 w-11/12 h-5/6 relative">
+        <button id="close-epg-modal" class="absolute top-2 right-2 text-2xl">&times;</button>
+        <div id="epg-content" class="h-full overflow-auto"></div>
     </div>
   </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
