@@ -96,20 +96,22 @@
     <div class="flex h-[calc(100vh-4rem)] md:h-screen">
         <!-- Sidebar -->
         <aside id="sidebar" class="w-64 flex-col glass-effect fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-40 md:flex">
-            <div class="flex items-center justify-center h-16 border-b border-gray-700/50">
+            <div class="flex items-center justify-center h-16 border-b border-gray-700/50 flex-shrink-0">
                 <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
                 <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
             </div>
-            <div class="flex-1 p-4 overflow-y-auto">
-                <div class="relative mb-4">
+            <div class="p-4 flex-shrink-0">
+                <div class="relative">
                     <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-transparent border border-gray-700/50 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
+            </div>
+            <div class="flex-1 p-4 overflow-y-auto">
                 <div id="channel-list" class="space-y-2">
                     <!-- Channel items will be populated here -->
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-700/50">
+            <div class="p-4 border-t border-gray-700/50 flex-shrink-0">
                 <div id="add-stream-container">
                     <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-transparent border border-gray-700/50 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
                     <button id="add-stream-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold glass-effect">
@@ -148,10 +150,14 @@
     <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50 p-4">
         <div class="p-4 md:p-6 rounded-xl max-w-2xl w-full shadow-2xl glass-effect">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl md:text-2xl font-bold" id="epg-channel-name"></h2>
-                <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
+                <h2 id="epg-channel-name" class="text-2xl font-bold mb-4">EPG Guide</h2>
+                <button id="close-epg-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div id="epg-guide" class="overflow-y-auto" style="max-height: 60vh;"></div>
+            <div id="epg-guide" class="overflow-y-auto" style="max-height: 60vh;">
+                <!-- EPG content will be populated here -->
+            </div>
         </div>
     </div>
     <script src="app.js" defer></script>

@@ -94,13 +94,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const renderChannels = (channels, append = false) => {
         if (!append) {
-            channelList.innerHTML = '';
+            while (channelList.firstChild && channelList.firstChild.id !== 'sentinel') {
+                channelList.removeChild(channelList.firstChild);
+            }
         }
         const fragment = document.createDocumentFragment();
-        channels.forEach(channel => {
-            fragment.appendChild(renderChannel(channel));
+        channels.forEach((channel, index) => {
+            const channelCard = renderChannel(channel);
+            channelCard.style.animationDelay = `${index * 50}ms`;
+            fragment.appendChild(channelCard);
         });
-        channelList.appendChild(fragment);
+
+        const sentinelEl = document.getElementById('sentinel');
+        if (sentinelEl) {
+            channelList.insertBefore(fragment, sentinelEl);
+        } else {
+            channelList.appendChild(fragment);
+        }
+
         lazyLoadImages();
     };
 
@@ -110,10 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentChannelIndex += channelsPerBatch;
     };
 
-    let observer;
+    let lazyLoadObserver;
     const lazyLoadImages = () => {
-        if (observer) observer.disconnect();
-        observer = new IntersectionObserver((entries, obs) => {
+        if (lazyLoadObserver) lazyLoadObserver.disconnect();
+        lazyLoadObserver = new IntersectionObserver((entries, obs) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
@@ -125,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { root: channelList, rootMargin: "0px 0px 200px 0px" });
 
         document.querySelectorAll('img.lazy').forEach(img => {
-            observer.observe(img);
+            lazyLoadObserver.observe(img);
         });
     };
 
@@ -133,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = searchInput.value.toLowerCase();
         filteredChannels = allChannels.filter(c => c.name.toLowerCase().includes(query));
         currentChannelIndex = 0;
-        renderChannels([]); // Clear the list
+        renderChannels([], false); // Clear the list, preserving the sentinel
         loadMoreChannels();
     };
 
@@ -163,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         searchInput.addEventListener('input', filterChannels);
         
-        const observer = new IntersectionObserver(
+        const infiniteScrollObserver = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting) {
                     loadMoreChannels();
@@ -175,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sentinel = document.createElement('div');
         sentinel.id = 'sentinel';
         channelList.appendChild(sentinel);
-        observer.observe(sentinel);
+        infiniteScrollObserver.observe(sentinel);
 
         addStreamBtn.addEventListener('click', () => {
             const url = newStreamUrlInput.value.trim();
