@@ -13,10 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const nowPlayingTitle = document.getElementById('now-playing-title');
     const nowPlayingDescription = document.getElementById('now-playing-description');
     const nowPlayingLogo = document.getElementById('now-playing-logo');
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
 
     let hls;
     let allChannels = [];
     let filteredChannels = [];
+    let currentChannelIndex = 0;
+    const channelsPerBatch = 50;
 
     const fetchJSON = async (url) => {
         try {
@@ -68,6 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeCard) {
             activeCard.classList.add('active-channel');
         }
+
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        }
     };
 
     const renderChannel = (channel) => {
@@ -82,19 +92,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return channelCard;
     };
     
-    const renderChannels = (channels) => {
+    const renderChannels = (channels, append = false) => {
+        if (!append) {
+            while (channelList.firstChild && channelList.firstChild.id !== 'sentinel') {
+                channelList.removeChild(channelList.firstChild);
+            }
+        }
         const fragment = document.createDocumentFragment();
-        channels.forEach(channel => {
-            fragment.appendChild(renderChannel(channel));
+        channels.forEach((channel, index) => {
+            const channelCard = renderChannel(channel);
+            channelCard.style.animationDelay = `${index * 50}ms`;
+            fragment.appendChild(channelCard);
         });
-        channelList.appendChild(fragment);
+
+        const sentinelEl = document.getElementById('sentinel');
+        if (sentinelEl) {
+            channelList.insertBefore(fragment, sentinelEl);
+        } else {
+            channelList.appendChild(fragment);
+        }
+
         lazyLoadImages();
     };
 
-    let observer;
+    const loadMoreChannels = () => {
+        const nextBatch = filteredChannels.slice(currentChannelIndex, currentChannelIndex + channelsPerBatch);
+        renderChannels(nextBatch, true);
+        currentChannelIndex += channelsPerBatch;
+    };
+
+    let lazyLoadObserver;
     const lazyLoadImages = () => {
-        if (observer) observer.disconnect();
-        observer = new IntersectionObserver((entries, obs) => {
+        if (lazyLoadObserver) lazyLoadObserver.disconnect();
+        lazyLoadObserver = new IntersectionObserver((entries, obs) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
@@ -106,15 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { root: channelList, rootMargin: "0px 0px 200px 0px" });
 
         document.querySelectorAll('img.lazy').forEach(img => {
-            observer.observe(img);
+            lazyLoadObserver.observe(img);
         });
     };
 
     const filterChannels = () => {
         const query = searchInput.value.toLowerCase();
         filteredChannels = allChannels.filter(c => c.name.toLowerCase().includes(query));
-        channelList.innerHTML = '';
-        renderChannels(filteredChannels);
+        currentChannelIndex = 0;
+        renderChannels([], false); // Clear the list, preserving the sentinel
+        loadMoreChannels();
     };
 
     const init = async () => {
@@ -139,10 +170,24 @@ document.addEventListener('DOMContentLoaded', () => {
             .sort((a, b) => a.name.localeCompare(b.name));
 
         filteredChannels = [...allChannels];
-        renderChannels(filteredChannels);
+        loadMoreChannels();
 
         searchInput.addEventListener('input', filterChannels);
         
+        const infiniteScrollObserver = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMoreChannels();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const sentinel = document.createElement('div');
+        sentinel.id = 'sentinel';
+        channelList.appendChild(sentinel);
+        infiniteScrollObserver.observe(sentinel);
+
         addStreamBtn.addEventListener('click', () => {
             const url = newStreamUrlInput.value.trim();
             if (url) {
@@ -155,6 +200,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         loadingOverlay.style.display = 'none';
+
+        const setupUIEventListeners = () => {
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+        };
+
+        setupUIEventListeners();
     };
 
     init();
