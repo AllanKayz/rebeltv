@@ -65,6 +65,13 @@
             border-color: var(--primary-color) !important;
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .channel-card {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="dark">
@@ -75,16 +82,27 @@
         </div>
     </div>
 
-    <div class="flex h-screen">
+    <header class="md:hidden flex items-center justify-between h-16 px-4 border-b border-gray-700/50 glass-effect">
+        <button id="menu-toggle" class="text-2xl">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="flex items-center">
+            <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
+            <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
+        </div>
+        <div></div>
+    </header>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+    <div class="flex h-[calc(100vh-4rem)] md:h-screen">
         <!-- Sidebar -->
-        <aside class="w-64 flex flex-col glass-effect">
+        <aside id="sidebar" class="w-64 flex-col glass-effect fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-40 md:flex">
             <div class="flex items-center justify-center h-16 border-b border-gray-700/50">
                 <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
                 <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
             </div>
             <div class="flex-1 p-4 overflow-y-auto">
                 <div class="relative mb-4">
-                    <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-transparent border border-gray-700/50 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
                 <div id="channel-list" class="space-y-2">
@@ -93,8 +111,8 @@
             </div>
             <div class="p-4 border-t border-gray-700/50">
                 <div id="add-stream-container">
-                    <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="add-stream-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold">
+                    <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-transparent border border-gray-700/50 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
+                    <button id="add-stream-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold glass-effect">
                         <i class="fas fa-plus mr-2"></i>Add Stream
                     </button>
                 </div>
@@ -108,18 +126,18 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col">
-            <div id="video-section" class="flex-1 flex items-center justify-center bg-black/50 p-4">
-                <div class="w-full max-w-6xl aspect-video video-container rounded-xl overflow-hidden">
+        <main class="flex-1 flex flex-col" style="background-image: url('https://www.transparenttextures.com/patterns/gplay.png');">
+            <div id="video-section" class="flex-1 flex items-center justify-center p-4">
+                <div class="w-full max-w-6xl aspect-video video-container rounded-xl overflow-hidden glass-effect">
                     <video id="video-player" controls class="w-full h-full"></video>
                 </div>
             </div>
             <div id="now-playing-card" class="p-4 glass-effect border-t border-gray-700/50">
                 <div class="flex items-center">
-                    <img id="now-playing-logo" src="placeholder.png" alt="Channel Logo" class="w-16 h-16 rounded-lg mr-4">
-                    <div>
-                        <h3 id="now-playing-title" class="font-semibold text-xl">Select a channel to start watching</h3>
-                        <p id="now-playing-description" class="text-sm opacity-75">Your modern streaming experience</p>
+                    <img id="now-playing-logo" src="placeholder.png" alt="Channel Logo" class="w-12 h-12 md:w-16 md:h-16 rounded-lg mr-4">
+                    <div class="flex-1">
+                        <h3 id="now-playing-title" class="font-semibold text-lg md:text-xl truncate">Select a channel to start watching</h3>
+                        <p id="now-playing-description" class="text-xs md:text-sm opacity-75 truncate">Your modern streaming experience</p>
                     </div>
                 </div>
             </div>
@@ -128,10 +146,10 @@
 
     <!-- EPG Modal -->
     <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50 p-4">
-        <div class="p-6 rounded-xl max-w-2xl w-full shadow-2xl glass-effect">
+        <div class="p-4 md:p-6 rounded-xl max-w-2xl w-full shadow-2xl glass-effect">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-2xl font-bold" id="epg-channel-name"></h2>
-.                <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
+                <h2 class="text-xl md:text-2xl font-bold" id="epg-channel-name"></h2>
+                <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
             </div>
             <div id="epg-guide" class="overflow-y-auto" style="max-height: 60vh;"></div>
         </div>

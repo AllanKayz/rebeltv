@@ -13,10 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const nowPlayingTitle = document.getElementById('now-playing-title');
     const nowPlayingDescription = document.getElementById('now-playing-description');
     const nowPlayingLogo = document.getElementById('now-playing-logo');
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
 
     let hls;
     let allChannels = [];
     let filteredChannels = [];
+    let currentChannelIndex = 0;
+    const channelsPerBatch = 50;
 
     const fetchJSON = async (url) => {
         try {
@@ -68,6 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeCard) {
             activeCard.classList.add('active-channel');
         }
+
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        }
     };
 
     const renderChannel = (channel) => {
@@ -82,13 +92,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return channelCard;
     };
     
-    const renderChannels = (channels) => {
+    const renderChannels = (channels, append = false) => {
+        if (!append) {
+            channelList.innerHTML = '';
+        }
         const fragment = document.createDocumentFragment();
         channels.forEach(channel => {
             fragment.appendChild(renderChannel(channel));
         });
         channelList.appendChild(fragment);
         lazyLoadImages();
+    };
+
+    const loadMoreChannels = () => {
+        const nextBatch = filteredChannels.slice(currentChannelIndex, currentChannelIndex + channelsPerBatch);
+        renderChannels(nextBatch, true);
+        currentChannelIndex += channelsPerBatch;
     };
 
     let observer;
@@ -113,8 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterChannels = () => {
         const query = searchInput.value.toLowerCase();
         filteredChannels = allChannels.filter(c => c.name.toLowerCase().includes(query));
-        channelList.innerHTML = '';
-        renderChannels(filteredChannels);
+        currentChannelIndex = 0;
+        renderChannels([]); // Clear the list
+        loadMoreChannels();
     };
 
     const init = async () => {
@@ -139,10 +159,24 @@ document.addEventListener('DOMContentLoaded', () => {
             .sort((a, b) => a.name.localeCompare(b.name));
 
         filteredChannels = [...allChannels];
-        renderChannels(filteredChannels);
+        loadMoreChannels();
 
         searchInput.addEventListener('input', filterChannels);
         
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMoreChannels();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const sentinel = document.createElement('div');
+        sentinel.id = 'sentinel';
+        channelList.appendChild(sentinel);
+        observer.observe(sentinel);
+
         addStreamBtn.addEventListener('click', () => {
             const url = newStreamUrlInput.value.trim();
             if (url) {
@@ -155,6 +189,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         loadingOverlay.style.display = 'none';
+
+        const setupUIEventListeners = () => {
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+        };
+
+        setupUIEventListeners();
     };
 
     init();
