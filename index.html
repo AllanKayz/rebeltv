@@ -16,10 +16,10 @@
             --text-dark: #f9fafb;
             --background-light: #f9fafb;
             --text-light: #111827;
-            --card-background-dark: #1f2937;
-            --card-border-dark: #374151;
-            --card-background-light: #ffffff;
-            --card-border-light: #e5e7eb;
+            --card-background-dark: rgba(31, 41, 55, 0.5);
+            --card-border-dark: rgba(55, 65, 81, 0.5);
+            --card-background-light: rgba(255, 255, 255, 0.5);
+            --card-border-light: rgba(229, 231, 235, 0.5);
         }
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
@@ -33,11 +33,24 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--background-dark);
             color: var(--text-dark);
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
         }
         body.light {
             background-color: var(--background-light);
             color: var(--text-light);
+            background-image: url('https://www.transparenttextures.com/patterns/light-sketch.png');
         }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        body.light .glass-effect {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
         .video-container {
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
@@ -64,23 +77,23 @@
 
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="w-64 bg-gray-900/70 backdrop-blur-xl flex flex-col">
-            <div class="flex items-center justify-center h-16 border-b border-gray-700">
+        <aside class="w-64 flex flex-col glass-effect">
+            <div class="flex items-center justify-center h-16 border-b border-gray-700/50">
                 <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
                 <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
             </div>
             <div class="flex-1 p-4 overflow-y-auto">
                 <div class="relative mb-4">
-                    <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
                 <div id="channel-list" class="space-y-2">
                     <!-- Channel items will be populated here -->
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-700">
+            <div class="p-4 border-t border-gray-700/50">
                 <div id="add-stream-container">
-                    <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button id="add-stream-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold">
                         <i class="fas fa-plus mr-2"></i>Add Stream
                     </button>
@@ -96,12 +109,12 @@
 
         <!-- Main Content -->
         <main class="flex-1 flex flex-col">
-            <div id="video-section" class="flex-1 flex items-center justify-center bg-black p-4">
+            <div id="video-section" class="flex-1 flex items-center justify-center bg-black/50 p-4">
                 <div class="w-full max-w-6xl aspect-video video-container rounded-xl overflow-hidden">
                     <video id="video-player" controls class="w-full h-full"></video>
                 </div>
             </div>
-            <div id="now-playing-card" class="p-4 bg-gray-900/70 backdrop-blur-xl border-t border-gray-700">
+            <div id="now-playing-card" class="p-4 glass-effect border-t border-gray-700/50">
                 <div class="flex items-center">
                     <img id="now-playing-logo" src="placeholder.png" alt="Channel Logo" class="w-16 h-16 rounded-lg mr-4">
                     <div>
@@ -115,15 +128,15 @@
 
     <!-- EPG Modal -->
     <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-gray-800 p-6 rounded-xl max-w-2xl w-full shadow-2xl">
+        <div class="p-6 rounded-xl max-w-2xl w-full shadow-2xl glass-effect">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-2xl font-bold" id="epg-channel-name"></h2>
-                <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
+.                <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
             </div>
             <div id="epg-guide" class="overflow-y-auto" style="max-height: 60vh;"></div>
         </div>
     </div>
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
     <script>
         // PWA Installation
         let deferredPrompt;
