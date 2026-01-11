@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
     const closeMobileMenu = document.getElementById('close-mobile-menu');
+    const collapseSidebarBtn = document.getElementById('collapse-sidebar');
+    const expandSidebarBtn = document.getElementById('expand-sidebar');
     
     const toggleAddStream = document.getElementById('toggle-add-stream');
     const customStreamForm = document.getElementById('custom-stream-form');
@@ -51,14 +53,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     const itemsPerPage = 40;
 
-    // --- Mobile Menu Management ---
+    // --- Sidebar Management ---
     function toggleMobileMenu() {
         sidebar.classList.toggle('hidden-mobile');
         sidebar.classList.toggle('visible-mobile');
     }
 
+    function toggleDesktopSidebar(isCollapsed) {
+        if (isCollapsed) {
+            sidebar.classList.add('sidebar-collapsed');
+            expandSidebarBtn.classList.remove('hidden');
+        } else {
+            sidebar.classList.remove('sidebar-collapsed');
+            expandSidebarBtn.classList.add('hidden');
+        }
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
+
     mobileMenuToggle.addEventListener('click', toggleMobileMenu);
     closeMobileMenu.addEventListener('click', toggleMobileMenu);
+
+    collapseSidebarBtn.addEventListener('click', () => toggleDesktopSidebar(true));
+    expandSidebarBtn.addEventListener('click', () => toggleDesktopSidebar(false));
+
+    function loadInitialSidebarState() {
+        if (window.innerWidth > 1024) {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            toggleDesktopSidebar(isCollapsed);
+        }
+    }
 
     // --- UI Helpers ---
     toggleAddStream.addEventListener('click', () => {
@@ -441,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Load ---
     function initializeApp() {
         loadInitialTheme();
+        loadInitialSidebarState();
         initializePlayer();
         loadCustomStreams();
         fetchPublicChannels();
