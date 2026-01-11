@@ -58,8 +58,39 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #5a7892;
         }
+
+        /* Custom Stream Item */
         .custom-stream-item:hover .delete-stream-btn {
             opacity: 1;
+        }
+
+        /* Channel Card */
+        .channel-card {
+            @apply bg-card-light dark:bg-card-dark rounded-xl shadow-md overflow-hidden cursor-pointer transition-all duration-300 transform hover:scale-[1.03] hover:-translate-y-1 hover:shadow-2xl border border-border-light dark:border-border-dark hover:border-primary group;
+        }
+        .channel-logo-container {
+            @apply h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-2 overflow-hidden rounded-t-xl;
+        }
+        .channel-logo {
+            @apply max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110;
+        }
+        .channel-info {
+            @apply p-4;
+        }
+        .channel-name {
+            @apply font-bold text-base text-text-light dark:text-text-dark truncate;
+        }
+        .channel-category {
+            @apply text-sm text-light-text-light dark:text-light-text-dark mt-1;
+        }
+
+        /* Player Overlay */
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
@@ -134,33 +165,5 @@
     <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="app.js"></script>
-
-    <style>
-        .channel-card {
-            @apply bg-card-light dark:bg-card-dark rounded-xl shadow-md overflow-hidden cursor-pointer transition-transform duration-300 transform hover:-translate-y-2 hover:shadow-xl border border-border-light dark:border-border-dark;
-        }
-        .channel-logo-container {
-            @apply h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-2;
-        }
-        .channel-logo {
-            @apply max-w-full max-h-full object-contain;
-        }
-        .channel-info {
-            @apply p-4;
-        }
-        .channel-name {
-            @apply font-bold text-base text-text-light dark:text-text-dark truncate;
-        }
-        .channel-category {
-            @apply text-sm text-light-text-light dark:text-light-text-dark mt-1;
-        }
-        .animate-fadeIn {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-    </style>
 </body>
 </html>
