@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const playingCategory = document.getElementById('playing-category');
     const playingLogo = document.getElementById('playing-logo');
 
+    const sourceSelectorContainer = document.getElementById('source-selector-container');
+    const sourceList = document.getElementById('source-list');
+
     const themeSwitcher = document.getElementById('theme-switcher');
     const htmlElement = document.documentElement;
     
@@ -99,12 +102,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function playStream(streamUrl, name = 'Custom Stream', category = 'Manual Link', logo = 'placeholder.png') {
+    function playStream(streamUrl, name = 'Custom Stream', category = 'Manual Link', logo = 'placeholder.png', allStreams = []) {
         if (streamUrl) {
             playingName.textContent = name;
             playingCategory.textContent = category;
             playingLogo.src = logo || 'placeholder.png';
             playingLogo.onerror = () => { playingLogo.src = 'placeholder.png'; };
+
+            // Handle Source Selector
+            if (allStreams && allStreams.length > 1) {
+                sourceSelectorContainer.classList.remove('hidden');
+                renderSourceSelector(allStreams, name, category, logo);
+            } else {
+                sourceSelectorContainer.classList.add('hidden');
+            }
 
             playerOverlay.classList.remove('hidden');
             const type = streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
@@ -112,6 +123,33 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert('Stream URL is not available.');
         }
+    }
+
+    function renderSourceSelector(allStreams, name, category, logo) {
+        sourceList.innerHTML = '';
+        allStreams.forEach((stream, index) => {
+            const btn = document.createElement('button');
+            const currentSrc = player.src();
+            const isCurrent = currentSrc === stream.url;
+            
+            btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                isCurrent 
+                ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`;
+            
+            const resolution = stream.height ? `${stream.height}p` : '';
+            const status = stream.status ? `(${stream.status})` : '';
+            btn.textContent = `Source ${index + 1} ${resolution} ${status}`.trim();
+            
+            btn.onclick = () => {
+                const type = stream.url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
+                player.src({ src: stream.url, type });
+                player.play();
+                renderSourceSelector(allStreams, name, category, logo);
+            };
+            sourceList.appendChild(btn);
+        });
     }
 
     closePlayer.addEventListener('click', () => {
@@ -206,7 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const logosData = await logosRes.json();
 
             streams = streamsData.reduce((acc, stream) => {
-                acc[stream.channel] = stream.url;
+                if (!acc[stream.channel]) acc[stream.channel] = [];
+                acc[stream.channel].push(stream);
                 return acc;
             }, {});
             
@@ -221,7 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .filter(ch => streams[ch.id])
                 .map(ch => ({ 
                     ...ch, 
-                    streamUrl: streams[ch.id],
+                    streamUrl: streams[ch.id][0].url, // Default to first stream
+                    allStreams: streams[ch.id],
                     isBlocked: blocklist.has(ch.id),
                     logo: ch.logo || externalLogos[ch.id]
                 }));
@@ -348,6 +388,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${channel.isBlocked ? `
                             <span class="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-bold">Blocked</span>
                         ` : ''}
+                        ${channel.allStreams && channel.allStreams.length > 1 ? `
+                            <span class="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">
+                                ${channel.allStreams.length} Sources
+                            </span>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -357,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             card.addEventListener('click', () => {
-                playStream(channel.streamUrl, channel.name, channel.category, channel.logo);
+                playStream(channel.streamUrl, channel.name, channel.category, channel.logo, channel.allStreams);
             });
 
             fragment.appendChild(card);
