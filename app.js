@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE_URL = 'https://iptv-org.github.io/api';
+    // --- DOM Elements ---
     const channelsGrid = document.getElementById('channel-grid');
     const categoryFilter = document.getElementById('category-filter');
     const countryFilter = document.getElementById('country-filter');
@@ -9,100 +9,176 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoPlayer = document.getElementById('video-player');
     const closePlayer = document.getElementById('close-player');
     const themeSwitcher = document.getElementById('theme-switcher');
+    const htmlElement = document.documentElement;
+    const customStreamForm = document.getElementById('custom-stream-form');
+    const customStreamNameInput = document.getElementById('custom-stream-name');
+    const customStreamUrlInput = document.getElementById('custom-stream-url');
+    const customStreamsList = document.getElementById('custom-streams-list');
 
+    // --- State ---
+    const API_BASE_URL = 'https://iptv-org.github.io/api';
     let channels = [];
     let streams = {};
+    let customStreams = [];
     let logoObserver;
     let player;
 
     // --- Theme Management ---
     function applyTheme(theme) {
-        if (theme === 'dark') {
-            document.body.classList.add('dark-theme');
-        } else {
-            document.body.classList.remove('dark-theme');
-        }
+        htmlElement.classList.toggle('dark', theme === 'dark');
     }
 
     function toggleTheme() {
-        const currentTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
-        applyTheme(currentTheme);
-        localStorage.setItem('theme', currentTheme);
+        const newTheme = htmlElement.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
     }
 
     themeSwitcher.addEventListener('click', toggleTheme);
 
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    applyTheme(savedTheme);
+    function loadInitialTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            applyTheme('dark');
+        }
+    }
 
-    // --- Player Initialization ---
-    player = videojs(videoPlayer, {
-        autoplay: true,
-        controls: true,
-        preload: 'auto',
-        fluid: true
+    // --- Player ---
+    function initializePlayer() {
+        player = videojs(videoPlayer, {
+            autoplay: true,
+            controls: true,
+            preload: 'auto',
+            fluid: true
+        });
+    }
+
+    function playStream(streamUrl) {
+        if (streamUrl) {
+            playerOverlay.classList.remove('hidden');
+            const type = streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
+            player.src({ src: streamUrl, type });
+        } else {
+            alert('Stream URL is not available.');
+        }
+    }
+
+    closePlayer.addEventListener('click', () => {
+        player.pause();
+        player.src('');
+        playerOverlay.classList.add('hidden');
     });
 
-    async function fetchData() {
-        try {
-            const [channelsRes, countriesRes, categoriesRes, streamsRes, languagesRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/channels.json`),
-                fetch(`${API_BASE_URL}/countries.json`),
-                fetch(`${API_BASE_URL}/categories.json`),
-                fetch(`${API_BASE_URL}/streams.json`),
-                fetch(`${API_BASE_URL}/languages.json`)
-            ]);
+    // --- Custom Streams ---
+    function saveCustomStreams() {
+        localStorage.setItem('customStreams', JSON.stringify(customStreams));
+    }
 
+    function loadCustomStreams() {
+        const saved = localStorage.getItem('customStreams');
+        customStreams = saved ? JSON.parse(saved) : [];
+        renderCustomStreams();
+    }
+
+    function renderCustomStreams() {
+        customStreamsList.innerHTML = '';
+        if (customStreams.length === 0) {
+            customStreamsList.innerHTML = `<p class="text-sm text-light-text-light dark:text-light-text-dark text-center">No custom streams yet.</p>`;
+        }
+        customStreams.forEach(stream => {
+            const streamEl = document.createElement('div');
+            streamEl.className = 'custom-stream-item flex items-center justify-between p-2 bg-background-light dark:bg-background-dark rounded-lg';
+            streamEl.dataset.id = stream.id;
+            
+            streamEl.innerHTML = `
+                <p class="font-semibold truncate cursor-pointer flex-grow" title="${stream.name}">${stream.name}</p>
+                <button class="delete-stream-btn text-red-500 hover:text-red-700 opacity-0 transition-opacity ml-2">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `;
+
+            streamEl.querySelector('p').addEventListener('click', () => playStream(stream.url));
+            streamEl.querySelector('.delete-stream-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteCustomStream(stream.id);
+            });
+
+            customStreamsList.appendChild(streamEl);
+        });
+    }
+
+    function addCustomStream(e) {
+        e.preventDefault();
+        const name = customStreamNameInput.value.trim() || 'Custom Stream';
+        const url = customStreamUrlInput.value.trim();
+
+        if (!url || !url.startsWith('http')) {
+            alert('Please enter a valid stream URL.');
+            return;
+        }
+
+        customStreams.push({ id: Date.now(), name, url });
+        saveCustomStreams();
+        renderCustomStreams();
+        customStreamForm.reset();
+    }
+
+    function deleteCustomStream(id) {
+        customStreams = customStreams.filter(stream => stream.id !== id);
+        saveCustomStreams();
+        renderCustomStreams();
+    }
+
+    customStreamForm.addEventListener('submit', addCustomStream);
+
+    // --- IPTV-ORG Channels ---
+    async function fetchPublicChannels() {
+        try {
+            const [channelsRes, streamsRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/channels.json`),
+                fetch(`${API_BASE_URL}/streams.json`),
+            ]);
             const channelsData = await channelsRes.json();
-            const countriesData = await countriesRes.json();
-            const categoriesData = await categoriesRes.json();
             const streamsData = await streamsRes.json();
-            const languagesData = await languagesRes.json();
 
             streams = streamsData.reduce((acc, stream) => {
                 acc[stream.channel] = stream.url;
                 return acc;
             }, {});
 
-            channels = channelsData.map(channel => ({
-                ...channel,
-                streamUrl: streams[channel.id],
-            }));
+            channels = channelsData.map(ch => ({ ...ch, streamUrl: streams[ch.id] }));
 
-            populateFilters(categoriesData, countriesData, languagesData);
-            renderChannels(channels);
+            const [countriesRes, categoriesRes, languagesRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/countries.json`),
+                fetch(`${API_BASE_URL}/categories.json`),
+                fetch(`${API_BASE_URL}/languages.json`)
+            ]);
+            populateFilters(await categoriesRes.json(), await countriesRes.json(), await languagesRes.json());
+            filterAndRenderPublicChannels();
 
         } catch (error) {
-            console.error('Error fetching data:', error);
-            channelsGrid.innerHTML = '<p>Error loading channels. Please try again later.</p>';
+            console.error('Error fetching public channels:', error);
+            channelsGrid.innerHTML = '<p class="text-center text-red-500 col-span-full">Error loading public channels.</p>';
         }
     }
 
     function populateFilters(categories, countries, languages) {
-        categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category.id;
-            option.textContent = category.name;
-            categoryFilter.appendChild(option);
-        });
-
-        countries.forEach(country => {
-            const option = document.createElement('option');
-            option.value = country.code;
-            option.textContent = country.name;
-            countryFilter.appendChild(option);
-        });
-        
-        languages.forEach(lang => {
-            const option = document.createElement('option');
-            option.value = lang.code;
-            option.textContent = lang.name;
-            languageFilter.appendChild(option);
-        });
+        const populate = (filterEl, items) => {
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id || item.code;
+                option.textContent = item.name;
+                filterEl.appendChild(option);
+            });
+        }
+        populate(categoryFilter, categories);
+        populate(countryFilter, countries);
+        populate(languageFilter, languages);
     }
 
-    function renderChannels(filteredChannels) {
+    function renderPublicChannels(filteredChannels) {
         channelsGrid.innerHTML = '';
         if (logoObserver) logoObserver.disconnect();
 
@@ -112,101 +188,71 @@ document.addEventListener('DOMContentLoaded', () => {
                     const card = entry.target;
                     const logo = card.querySelector('.channel-logo');
                     logo.src = logo.dataset.src;
-                    logo.onerror = () => { logo.src = 'placeholder.png'; };
+                    logo.onerror = () => { logo.src = 'placeholder.png'; }; // Fallback image
                     observer.unobserve(card);
                 }
             });
-        }, { rootMargin: '0px 0px 200px 0px' });
+        }, { rootMargin: '0px 0px 300px 0px' });
+
+        if (filteredChannels.length === 0) {
+            channelsGrid.innerHTML = '<p class="text-center col-span-full">No channels found.</p>';
+            return;
+        }
 
         filteredChannels.forEach(channel => {
             if (!channel.streamUrl) return;
-
             const card = document.createElement('div');
             card.className = 'channel-card';
-            card.dataset.channelId = channel.id;
-
-            const logoContainer = document.createElement('div');
-            logoContainer.className = 'channel-logo-container';
-
-            const logo = document.createElement('img');
-            logo.className = 'channel-logo';
-            logo.src = 'placeholder.png';
-            logo.dataset.src = channel.logo || 'placeholder.png';
-            logo.alt = `${channel.name} Logo`;
-
-            logoContainer.appendChild(logo);
-
-            const info = document.createElement('div');
-            info.className = 'channel-info';
-
-            const name = document.createElement('p');
-            name.className = 'channel-name';
-            name.textContent = channel.name;
-
-            const category = document.createElement('p');
-            category.className = 'channel-category';
-            category.textContent = channel.category || 'General';
-
-            info.appendChild(name);
-            info.appendChild(category);
-            card.appendChild(logoContainer);
-            card.appendChild(info);
+            card.dataset.streamUrl = channel.streamUrl;
+            card.innerHTML = `
+                <div class="channel-logo-container">
+                    <img class="channel-logo" src="placeholder.png" data-src="${channel.logo || 'placeholder.png'}" alt="${channel.name} Logo">
+                </div>
+                <div class="channel-info">
+                    <p class="channel-name">${channel.name}</p>
+                    <p class="channel-category">${channel.category || 'General'}</p>
+                </div>
+            `;
             channelsGrid.appendChild(card);
-
             logoObserver.observe(card);
         });
     }
 
-    function filterAndRender() {
+    function filterAndRenderPublicChannels() {
         const searchTerm = searchBar.value.toLowerCase();
         const selectedCategory = categoryFilter.value;
         const selectedCountry = countryFilter.value;
         const selectedLanguage = languageFilter.value;
 
-        const filteredChannels = channels.filter(channel => {
-            const nameMatch = channel.name.toLowerCase().includes(searchTerm);
-            const categoryMatch = !selectedCategory || channel.category === selectedCategory;
-            const countryMatch = !selectedCountry || channel.country === selectedCountry;
-            const languageMatch = !selectedLanguage || (channel.languages && channel.languages.includes(selectedLanguage));
-
-            return nameMatch && categoryMatch && countryMatch && languageMatch;
-        });
-
-        renderChannels(filteredChannels);
+        const filtered = channels.filter(ch => 
+            (!searchTerm || ch.name.toLowerCase().includes(searchTerm)) &&
+            (!selectedCategory || ch.category === selectedCategory) &&
+            (!selectedCountry || ch.country === selectedCountry) &&
+            (!selectedLanguage || (ch.languages && ch.languages.includes(selectedLanguage)))
+        );
+        renderPublicChannels(filtered);
     }
 
-    function playChannel(channelId) {
-        const streamUrl = streams[channelId];
-        if (streamUrl) {
-            player.src({
-                src: streamUrl,
-                type: streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
-            });
-            playerOverlay.style.display = 'flex';
-        } else {
-            alert('Stream not available for this channel.');
-        }
-    }
-
-    // Event Listeners
-    searchBar.addEventListener('input', filterAndRender);
-    categoryFilter.addEventListener('change', filterAndRender);
-    countryFilter.addEventListener('change', filterAndRender);
-    languageFilter.addEventListener('change', filterAndRender);
+    // --- Event Listeners ---
+    [searchBar, categoryFilter, countryFilter, languageFilter].forEach(el => {
+        el.addEventListener('input', filterAndRenderPublicChannels);
+        el.addEventListener('change', filterAndRenderPublicChannels);
+    });
 
     channelsGrid.addEventListener('click', (e) => {
         const card = e.target.closest('.channel-card');
-        if (card) {
-            playChannel(card.dataset.channelId);
+        if (card && card.dataset.streamUrl) {
+            playStream(card.dataset.streamUrl);
         }
     });
 
-    closePlayer.addEventListener('click', () => {
-        player.pause();
-        player.src('');
-        playerOverlay.style.display = 'none';
-    });
+    // --- Initial Load ---
+    function initializeApp() {
+        loadInitialTheme();
+        initializePlayer();
+        loadCustomStreams();
+        fetchPublicChannels();
+    }
 
-    // Initial data fetch
-    fetchData();
+    initializeApp();
 });

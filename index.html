@@ -1,273 +1,166 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPTV Channel Browser</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://vjs.zencdn.net/7.15.4/video-js.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3498db',
+                        secondary: {
+                            light: '#34495e',
+                            dark: '#ecf0f1'
+                        },
+                        background: {
+                            light: '#f0f2f5',
+                            dark: '#2c3e50'
+                        },
+                        card: {
+                            light: '#ffffff',
+                            dark: '#34495e'
+                        },
+                        text: {
+                            light: '#333333',
+                            dark: '#ecf0f1'
+                        },
+                        'light-text': {
+                            light: '#777777',
+                            dark: '#bdc3c7'
+                        },
+                        border: {
+                            light: '#dddddd',
+                            dark: '#4a6278'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --background-color: #f0f2f5;
-            --card-background: #ffffff;
-            --text-color: #333333;
-            --light-text-color: #777777;
-            --border-color: #dddddd;
-            --shadow: 0 4px 8px rgba(0,0,0,0.1);
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
         }
-
-        body.dark-theme {
-            --primary-color: #3498db;
-            --secondary-color: #ecf0f1;
-            --background-color: #2c3e50;
-            --card-background: #34495e;
-            --text-color: #ecf0f1;
-            --light-text-color: #bdc3c7;
-            --border-color: #4a6278;
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
+        ::-webkit-scrollbar-thumb {
+            background: #4a6278;
+            border-radius: 4px;
         }
-
-        #app {
-            display: flex;
-            height: 100vh;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a7892;
         }
-
-        #sidebar {
-            width: 280px;
-            background-color: var(--card-background);
-            padding: 30px;
-            box-shadow: 3px 0 10px rgba(0,0,0,0.05);
-            overflow-y: auto;
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
+        .custom-stream-item:hover .delete-stream-btn {
+            opacity: 1;
         }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark font-sans">
+    <div id="app" class="flex h-screen">
+        <aside id="sidebar" class="w-80 bg-card-light dark:bg-card-dark p-6 shadow-lg overflow-y-auto border-r border-border-light dark:border-border-dark flex flex-col">
+            <div>
+                <h1 class="text-3xl font-bold text-primary mb-6">REBELTV</h1>
 
-        #sidebar h2 {
-            color: var(--primary-color);
-            margin-top: 0;
-            font-size: 1.5em;
-            display: flex;
-            align-items: center;
-        }
+                <!-- Custom Streams Section -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4">Custom Streams</h2>
+                    <form id="custom-stream-form" class="space-y-4">
+                        <input type="text" id="custom-stream-name" placeholder="Stream Name" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
+                        <input type="url" id="custom-stream-url" placeholder="Stream URL (.m3u8, .mp4)" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition" required>
+                        <button type="submit" id="add-stream-btn" class="w-full p-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition">Add Stream</button>
+                    </form>
+                    <div id="custom-streams-list" class="mt-4 space-y-2">
+                        <!-- Custom streams will be listed here -->
+                    </div>
+                </div>
 
-        #sidebar h2 .fa-filter {
-            margin-right: 10px;
-        }
+                <div class="border-t border-border-light dark:border-border-dark my-6"></div>
 
-        #search-bar {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 25px;
-            font-size: 1em;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            transition: border-color 0.3s;
-        }
+                <!-- Filters Section -->
+                <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4 flex items-center"><i class="fas fa-filter mr-3"></i>Browse Channels</h2>
+                <input type="text" id="search-bar" placeholder="Search channels..." class="w-full p-3 mb-4 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Category</h3>
+                        <select id="category-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Country</h3>
+                        <select id="country-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Countries</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Language</h3>
+                        <select id="language-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Languages</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-auto flex justify-center pt-6">
+                <button id="theme-switcher" class="p-3 rounded-full bg-background-light dark:bg-background-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    <i class="fas fa-sun text-xl text-yellow-500 block dark:hidden"></i>
+                    <i class="fas fa-moon text-xl text-blue-300 hidden dark:block"></i>
+                </button>
+            </div>
+        </aside>
 
-        #search-bar:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
+        <main id="main-content" class="flex-grow p-8 overflow-y-auto">
+            <h1 class="text-4xl font-bold text-secondary-light dark:text-secondary-dark mb-8">IPTV Channel Browser</h1>
+            <div id="channel-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                <!-- Channel cards will be inserted here -->
+            </div>
+        </main>
+    </div>
 
-        .filter-group {
-            margin-bottom: 25px;
-        }
+    <div id="player-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden animate-fadeIn">
+        <div id="player-container" class="w-full max-w-4xl bg-black shadow-2xl relative">
+            <span id="close-player" class="absolute top-3 right-3 text-white text-3xl cursor-pointer z-10 hover:scale-125 transition-transform">&times;</span>
+            <video id="video-player" class="video-js vjs-default-skin w-full h-full"></video>
+        </div>
+    </div>
 
-        .filter-group h3 {
-            margin-top: 0;
-            font-size: 1.2em;
-            color: var(--secondary-color);
-            margin-bottom: 15px;
-        }
+    <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="app.js"></script>
 
-        .filter-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--background-color);
-            color: var(--text-color);
-        }
-
-        .theme-switcher {
-            margin-top: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 8px;
-            background-color: var(--background-color);
-        }
-
-        .theme-switcher .fa-sun, .theme-switcher .fa-moon {
-            font-size: 20px;
-        }
-        
-        body.dark-theme .theme-switcher .fa-sun { display: none; }
-        body:not(.dark-theme) .theme-switcher .fa-moon { display: none; }
-
-        #main-content {
-            flex-grow: 1;
-            padding: 30px;
-            overflow-y: auto;
-        }
-
-        #main-content h1 {
-            color: var(--secondary-color);
-            font-size: 2em;
-            margin-bottom: 20px;
-        }
-
-        #channel-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
-        }
-
+    <style>
         .channel-card {
-            background-color: var(--card-background);
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid var(--border-color);
+            @apply bg-card-light dark:bg-card-dark rounded-xl shadow-md overflow-hidden cursor-pointer transition-transform duration-300 transform hover:-translate-y-2 hover:shadow-xl border border-border-light dark:border-border-dark;
         }
-
-        .channel-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-        }
-
         .channel-logo-container {
-            height: 140px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f8f8;
-            border-bottom: 1px solid var(--border-color);
+            @apply h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-2;
         }
-
         .channel-logo {
-            max-width: 75%;
-            max-height: 75%;
+            @apply max-w-full max-h-full object-contain;
         }
-
         .channel-info {
-            padding: 20px;
+            @apply p-4;
         }
-
         .channel-name {
-            font-weight: 600;
-            font-size: 1.1em;
-            margin: 0 0 10px;
+            @apply font-bold text-base text-text-light dark:text-text-dark truncate;
         }
-
         .channel-category {
-            font-size: 0.95em;
-            color: var(--light-text-color);
+            @apply text-sm text-light-text-light dark:text-light-text-dark mt-1;
         }
-
-        #player-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.85);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            animation: fadeIn 0.3s;
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-in-out;
         }
-
-        #player-container {
-            width: 85%;
-            max-width: 1000px;
-            background-color: #000;
-            position: relative;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-
-        #close-player {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 30px;
-            color: #fff;
-            cursor: pointer;
-            transition: transform 0.3s;
-            z-index: 10;
-        }
-
-        #close-player:hover {
-            transform: scale(1.2);
-        }
-
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
     </style>
-</head>
-<body>
-    <div id="app">
-        <aside id="sidebar">
-            <div>
-                <h2><i class="fas fa-filter"></i> Filters</h2>
-                <input type="text" id="search-bar" placeholder="Search channels...">
-                <div class="filter-group">
-                    <h3>Category</h3>
-                    <select id="category-filter">
-                        <option value="">All Categories</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <h3>Country</h3>
-                    <select id="country-filter">
-                        <option value="">All Countries</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <h3>Language</h3>
-                    <select id="language-filter">
-                        <option value="">All Languages</option>
-                    </select>
-                </div>
-            </div>
-            <div class="theme-switcher" id="theme-switcher">
-                <i class="fas fa-sun"></i>
-                <i class="fas fa-moon"></i>
-            </div>
-        </aside>
-        <main id="main-content">
-            <h1>IPTV Channel Browser</h1>
-            <div id="channel-grid"></div>
-        </main>
-    </div>
-    <div id="player-overlay">
-        <div id="player-container">
-            <span id="close-player">&times;</span>
-            <video id="video-player" class="video-js vjs-default-skin" controls autoplay preload="auto" data-setup='{}'>
-            </video>
-        </div>
-    </div>
-    <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="app.js"></script>
 </body>
 </html>
