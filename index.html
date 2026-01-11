@@ -1,413 +1,169 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>REBELTV Streaming App</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Channel Browser</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://vjs.zencdn.net/7.15.4/video-js.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3498db',
+                        secondary: {
+                            light: '#34495e',
+                            dark: '#ecf0f1'
+                        },
+                        background: {
+                            light: '#f0f2f5',
+                            dark: '#2c3e50'
+                        },
+                        card: {
+                            light: '#ffffff',
+                            dark: '#34495e'
+                        },
+                        text: {
+                            light: '#333333',
+                            dark: '#ecf0f1'
+                        },
+                        'light-text': {
+                            light: '#777777',
+                            dark: '#bdc3c7'
+                        },
+                        border: {
+                            light: '#dddddd',
+                            dark: '#4a6278'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a6278;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a7892;
+        }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
+        /* Custom Stream Item */
+        .custom-stream-item:hover .delete-stream-btn {
+            opacity: 1;
+        }
 
-    body.dark {
-      background-color: #0f172a;
-      color: #f1f5f9;
-    }
+        /* Channel Card */
+        .channel-card {
+            @apply bg-card-light dark:bg-card-dark rounded-xl shadow-md overflow-hidden cursor-pointer transition-all duration-300 transform hover:scale-[1.03] hover:-translate-y-1 hover:shadow-2xl border border-border-light dark:border-border-dark hover:border-primary group;
+        }
+        .channel-logo-container {
+            @apply h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-2 overflow-hidden rounded-t-xl;
+        }
+        .channel-logo {
+            @apply max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110;
+        }
+        .channel-info {
+            @apply p-4;
+        }
+        .channel-name {
+            @apply font-bold text-base text-text-light dark:text-text-dark truncate;
+        }
+        .channel-category {
+            @apply text-sm text-light-text-light dark:text-light-text-dark mt-1;
+        }
 
-    body.light {
-      background-color: #f8fafc;
-      color: #0f172a;
-    }
-
-    #app-container {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-/* Add to existing styles */
-#channel-list {
-  flex-grow: 1;
-  overflow-y: auto;
-  max-height: 40vh;
-}
-
-.loading-indicator {
-  text-align: center;
-  padding: 1rem;
-  color: #9ca3af;
-}
-
-    video {
-      width: 100%;
-      border-radius: 0.75rem;
-      background-color: #000;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .channel-card {
-      display: flex;
-      align-items: center;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      justify-content: space-between;
-    }
-
-    .dark .channel-card {
-      background-color: #1e293b;
-      border: 1px solid #334155;
-    }
-
-    .light .channel-card {
-      background-color: #ffffff;
-      border: 1px solid #e2e8f0;
-    }
-
-    .channel-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .dark .channel-card:hover {
-      background-color: #334155;
-      border-color: #475569;
-    }
-
-    .light .channel-card:hover {
-      background-color: #f1f5f9;
-      border-color: #cbd5e1;
-    }
-
-    .channel-card.active {
-      border: 2px solid #3b82f6;
-    }
-
-    .channel-logo {
-      width: 48px;
-      height: 48px;
-      margin-right: 1rem;
-      border-radius: 0.5rem;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .dark .input-field {
-      background-color: #1e293b;
-      border: 1px solid #334155;
-      color: #f1f5f9;
-    }
-
-    .light .input-field {
-      background-color: #ffffff;
-      border: 1px solid #cbd5e1;
-      color: #0f172a;
-    }
-
-    .input-field:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    .theme-toggle {
-      width: 60px;
-      height: 30px;
-      background-color: #475569;
-      border-radius: 15px;
-      position: relative;
-      cursor: pointer;
-    }
-
-    .theme-toggle-slider {
-      width: 26px;
-      height: 26px;
-      background-color: white;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      transition: transform 0.3s ease;
-    }
-
-    .theme-toggle.active .theme-toggle-slider {
-      transform: translateX(30px);
-    }
-
-    .light .theme-toggle {
-      background-color: #fbbf24;
-    }
-
-    #video-container {
-      position: relative;
-    }
-
-    .video-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 1.5rem;
-      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-      border-radius: 0 0 0.75rem 0.75rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .dark .badge-live {
-      background-color: #dc2626;
-      color: white;
-    }
-
-    .light .badge-live {
-      background-color: #ef4444;
-      color: white;
-    }
-
-    .scrollbar-thin::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .dark .scrollbar-thin::-webkit-scrollbar-track {
-      background: #1e293b;
-    }
-
-    .light .scrollbar-thin::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-
-    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-      background: #475569;
-      border-radius: 3px;
-    }
-
-    .light .scrollbar-thin::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 3px;
-    }
-
-    .dark .modal-bg {
-      background-color: #1e293b;
-    }
-
-    .light .modal-bg {
-      background-color: #ffffff;
-    }
-
-    @media (max-width: 768px) {
-      #main-content {
-        flex-direction: column;
-      }
-      
-      #video-section {
-        order: 1;
-      }
-      
-      #channels-section {
-        order: 2;
-      }
-    }
-  </style>
+        /* Player Overlay */
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
 </head>
-<body class="dark">
-  <div id="app-container">
-    <!-- Header -->
-    <header class="sticky top-0 z-50 backdrop-blur-lg border-b" style="background-color: rgba(15, 23, 42, 0.8);">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center space-x-3">
-            <i class="fas fa-tv text-3xl text-blue-500"></i>
-            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">REBELTV</h1>
-          </div>
-          
-          <div class="flex items-center space-x-4">
-            <span class="text-sm hidden sm:inline" id="theme-label">Dark Mode</span>
-            <div class="theme-toggle" id="theme-toggle">
-              <div class="theme-toggle-slider"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark font-sans">
+    <div id="app" class="flex h-screen">
+        <aside id="sidebar" class="w-80 bg-card-light dark:bg-card-dark p-6 shadow-lg overflow-y-auto border-r border-border-light dark:border-border-dark flex flex-col">
+            <div>
+                <h1 class="text-3xl font-bold text-primary mb-6">REBELTV</h1>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div id="main-content" class="flex flex-col lg:flex-row gap-6">
-        
-        <!-- Video Section -->
-        <div id="video-section" class="w-full lg:w-2/3">
-          <div id="video-container" class="rounded-xl overflow-hidden">
-            <video id="video-player" controls></video>
-            <div class="video-overlay hidden" id="video-info">
-              <div class="flex items-center justify-between">
-                <div>
-                  <span class="badge badge-live"><i class="fas fa-circle text-xs mr-1"></i>LIVE</span>
-                  <h3 class="text-xl font-bold mt-2 text-white" id="current-channel-name">Select a channel</h3>
+                <!-- Custom Streams Section -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4">Custom Streams</h2>
+                    <form id="custom-stream-form" class="space-y-4">
+                        <input type="text" id="custom-stream-name" placeholder="Stream Name" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
+                        <input type="url" id="custom-stream-url" placeholder="Stream URL (.m3u8, .mp4)" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition" required>
+                        <button type="submit" id="add-stream-btn" class="w-full p-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition">Add Stream</button>
+                    </form>
+                    <div id="custom-streams-list" class="mt-4 space-y-2">
+                        <!-- Custom streams will be listed here -->
+                    </div>
                 </div>
-              </div>
+
+                <div class="border-t border-border-light dark:border-border-dark my-6"></div>
+
+                <!-- Filters Section -->
+                <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4 flex items-center"><i class="fas fa-filter mr-3"></i>Browse Channels</h2>
+                <input type="text" id="search-bar" placeholder="Search channels..." class="w-full p-3 mb-4 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Category</h3>
+                        <select id="category-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Country</h3>
+                        <select id="country-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Countries</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Language</h3>
+                        <select id="language-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                            <option value="">All Languages</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-          </div>
-          
-          <!-- Now Playing Info Card -->
-          <div class="mt-4 p-4 rounded-lg" id="now-playing-card" style="display: none;">
-            <h3 class="font-semibold text-lg mb-2">Now Playing</h3>
-            <p class="text-sm opacity-75" id="now-playing-description">Select a channel to start streaming</p>
-          </div>
-        </div>
-
-        <!-- Channels Section -->
-        <div id="channels-section" class="w-full lg:w-1/3 flex flex-col">
-          <!-- Search Bar -->
-          <div class="relative mb-4">
-            <input 
-              id="search-channels"
-              type="text" 
-              placeholder="Search channels..."
-              class="w-full input-field rounded-lg p-3 pl-10" />
-            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          </div>
-
-          <!-- Add Stream -->
-          <div class="mb-4 p-4 rounded-lg border" id="add-stream-container">
-            <label class="block text-sm font-semibold mb-2">
-              <i class="fas fa-plus-circle mr-2"></i>Add New Stream
-            </label>
-            <div class="flex gap-2">
-              <input
-                id="new-stream-url"
-                type="text"
-                placeholder="https://example.com/stream.m3u8"
-                class="flex-1 input-field rounded-lg p-2 text-sm" />
-              <button
-                id="add-stream-btn"
-                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
-                <i class="fas fa-plus"></i>
-              </button>
+            <div class="mt-auto flex justify-center pt-6">
+                <button id="theme-switcher" class="p-3 rounded-full bg-background-light dark:bg-background-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    <i class="fas fa-sun text-xl text-yellow-500 block dark:hidden"></i>
+                    <i class="fas fa-moon text-xl text-blue-300 hidden dark:block"></i>
+                </button>
             </div>
-          </div>
+        </aside>
 
-          <!-- Channel List -->
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-bold">
-              Channels (<span id="channel-count">0</span>)
-            </h2>
-          </div>
-          
-          <div id="channel-list" class="space-y-2 overflow-y-auto scrollbar-thin pr-2" style="max-height: 600px;">
-            <!-- Channels dynamically populated -->
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="mt-auto border-t py-4">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm opacity-60">
-        <p>&copy; 2025 REBELTV. All rights reserved.</p>
-      </div>
-    </footer>
-  </div>
-
-  <!-- EPG Modal -->
-  <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
-    <div class="modal-bg p-6 rounded-xl max-w-2xl w-full mx-4 shadow-2xl">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl font-bold" id="epg-channel-name"></h2>
-        <button id="close-epg-modal" class="text-gray-400 hover:text-white text-2xl">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div id="epg-guide" class="overflow-y-auto scrollbar-thin" style="max-height: 400px;"></div>
+        <main id="main-content" class="flex-grow p-8 overflow-y-auto">
+            <h1 class="text-4xl font-bold text-secondary-light dark:text-secondary-dark mb-8">IPTV Channel Browser</h1>
+            <div id="channel-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                <!-- Channel cards will be inserted here -->
+            </div>
+        </main>
     </div>
-  </div>
 
-  <script src="app.js"></script>
-  <script>
-    // Theme Toggle
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeLabel = document.getElementById('theme-label');
-    const body = document.body;
-    const header = document.querySelector('header');
-    const footer = document.querySelector('footer');
-    const addStreamContainer = document.getElementById('add-stream-container');
-    const nowPlayingCard = document.getElementById('now-playing-card');
+    <div id="player-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden animate-fadeIn">
+        <div id="player-container" class="w-full max-w-4xl bg-black shadow-2xl relative">
+            <span id="close-player" class="absolute top-3 right-3 text-white text-3xl cursor-pointer z-10 hover:scale-125 transition-transform">&times;</span>
+            <video id="video-player" class="video-js vjs-default-skin w-full h-full"></video>
+        </div>
+    </div>
 
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = body.classList.contains('dark') ? 'dark' : 'light';
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      setTheme(newTheme);
-      localStorage.setItem('theme', newTheme);
-    });
-
-    function setTheme(theme) {
-      if (theme === 'light') {
-        body.classList.remove('dark');
-        body.classList.add('light');
-        themeToggle.classList.add('active');
-        themeLabel.textContent = 'Light Mode';
-        header.style.backgroundColor = 'rgba(248, 250, 252, 0.8)';
-        header.classList.remove('border-b');
-        header.style.borderBottom = '1px solid #e2e8f0';
-        footer.style.borderTop = '1px solid #e2e8f0';
-        addStreamContainer.style.borderColor = '#e2e8f0';
-        addStreamContainer.style.backgroundColor = '#ffffff';
-        if (nowPlayingCard.style.display !== 'none') {
-          nowPlayingCard.style.backgroundColor = '#ffffff';
-          nowPlayingCard.style.border = '1px solid #e2e8f0';
-        }
-      } else {
-        body.classList.remove('light');
-        body.classList.add('dark');
-        themeToggle.classList.remove('active');
-        themeLabel.textContent = 'Dark Mode';
-        header.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
-        header.style.borderBottom = '1px solid #334155';
-        footer.style.borderTop = '1px solid #334155';
-        addStreamContainer.style.borderColor = '#334155';
-        addStreamContainer.style.backgroundColor = '#1e293b';
-        if (nowPlayingCard.style.display !== 'none') {
-          nowPlayingCard.style.backgroundColor = '#1e293b';
-          nowPlayingCard.style.border = '1px solid #334155';
-        }
-      }
-    }
-
-    // Update theme when channel is selected
-    const originalVideoPlayerSetup = window.playStream;
-    if (typeof playStream === 'function') {
-      window.playStream = function(...args) {
-        const result = originalVideoPlayerSetup.apply(this, args);
-        const theme = body.classList.contains('dark') ? 'dark' : 'light';
-        if (theme === 'light') {
-          nowPlayingCard.style.backgroundColor = '#ffffff';
-          nowPlayingCard.style.border = '1px solid #e2e8f0';
-        } else {
-          nowPlayingCard.style.backgroundColor = '#1e293b';
-          nowPlayingCard.style.border = '1px solid #334155';
-        }
-        return result;
-      };
-    }
-  </script>
+    <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="app.js"></script>
 </body>
 </html>

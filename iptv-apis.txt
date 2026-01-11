@@ -1,0 +1,13 @@
+https://iptv-org.github.io/api/channels.json
+https://iptv-org.github.io/api/feeds.json
+https://iptv-org.github.io/api/logos.json
+https://iptv-org.github.io/api/streams.json
+https://iptv-org.github.io/api/guides.json
+https://iptv-org.github.io/api/categories.json
+https://iptv-org.github.io/api/languages.json
+https://iptv-org.github.io/api/countries.json
+https://iptv-org.github.io/api/subdivisions.json
+https://iptv-org.github.io/api/cities.json
+https://iptv-org.github.io/api/regions.json
+https://iptv-org.github.io/api/timezones.json
+https://iptv-org.github.io/api/blocklist.json
