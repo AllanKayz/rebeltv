@@ -194,6 +194,15 @@
               <option value="">All Languages</option>
             </select>
           </div>
+
+          <div class="flex items-center justify-between p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <label for="show-blocked" class="text-xs font-semibold text-slate-500 cursor-pointer">Show Blocked</label>
+            <div
+              class="relative inline-block w-8 h-4 transition duration-200 ease-in-out bg-slate-200 dark:bg-slate-700 rounded-full cursor-pointer">
+              <input type="checkbox" id="show-blocked"
+                class="absolute w-4 h-4 transition duration-200 ease-in-out bg-white rounded-full appearance-none cursor-pointer checked:translate-x-4 checked:bg-primary ring-1 ring-slate-300 dark:ring-slate-600">
+            </div>
+          </div>
         </div>
       </div>
 
@@ -227,6 +236,13 @@
         <div id="channel-grid"
           class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
           <!-- Enhanced channel cards injected here -->
+        </div>
+
+        <!-- Sentinel element for lazy loading -->
+        <div id="load-more-sentinel" class="h-20 w-full flex items-center justify-center mt-8">
+          <div class="sentinel-loader hidden">
+            <i class="fas fa-circle-notch fa-spin text-primary text-2xl"></i>
+          </div>
         </div>
 
         <!-- Skeleton Loading State -->

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryFilter = document.getElementById('category-filter');
     const countryFilter = document.getElementById('country-filter');
     const languageFilter = document.getElementById('language-filter');
+    const showBlockedToggle = document.getElementById('show-blocked');
     const searchBar = document.getElementById('search-bar');
     const resultsCount = document.getElementById('results-count');
     
@@ -28,13 +29,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const customStreamUrlInput = document.getElementById('custom-stream-url');
     const customStreamsList = document.getElementById('custom-streams-list');
 
+    const loadMoreSentinel = document.getElementById('load-more-sentinel');
+    const sentinelLoader = loadMoreSentinel.querySelector('.sentinel-loader');
+
     // --- State ---
     const API_BASE_URL = 'https://iptv-org.github.io/api';
     let channels = [];
     let streams = {};
+    let blocklist = new Set();
+    let externalLogos = {};
     let customStreams = [];
     let logoObserver;
+    let sentinelObserver;
     let player;
+
+    // --- Lazy Loading State ---
+    let currentlyFilteredChannels = [];
+    let currentPage = 1;
+    const itemsPerPage = 40;
 
     // --- Mobile Menu Management ---
     function toggleMobileMenu() {
@@ -181,21 +193,38 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingState.classList.remove('hidden');
             channelsGrid.innerHTML = '';
             
-            const [channelsRes, streamsRes] = await Promise.all([
+            const [channelsRes, streamsRes, blocklistRes, logosRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/channels.json`),
                 fetch(`${API_BASE_URL}/streams.json`),
+                fetch(`${API_BASE_URL}/blocklist.json`),
+                fetch(`${API_BASE_URL}/logos.json`)
             ]);
+            
             const channelsData = await channelsRes.json();
             const streamsData = await streamsRes.json();
+            const blocklistData = await blocklistRes.json();
+            const logosData = await logosRes.json();
 
             streams = streamsData.reduce((acc, stream) => {
                 acc[stream.channel] = stream.url;
                 return acc;
             }, {});
+            
+            blocklist = new Set(blocklistData.map(item => item.channel));
+            
+            externalLogos = logosData.reduce((acc, logo) => {
+                acc[logo.channel] = logo.url;
+                return acc;
+            }, {});
 
             channels = channelsData
                 .filter(ch => streams[ch.id])
-                .map(ch => ({ ...ch, streamUrl: streams[ch.id] }));
+                .map(ch => ({ 
+                    ...ch, 
+                    streamUrl: streams[ch.id],
+                    isBlocked: blocklist.has(ch.id),
+                    logo: ch.logo || externalLogos[ch.id]
+                }));
 
             const [countriesRes, categoriesRes, languagesRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/countries.json`),
@@ -229,7 +258,37 @@ document.addEventListener('DOMContentLoaded', () => {
         populate(languageFilter, languages);
     }
 
+    function setupSentinelObserver() {
+        if (sentinelObserver) sentinelObserver.disconnect();
+
+        sentinelObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && currentPage * itemsPerPage < currentlyFilteredChannels.length) {
+                loadNextBatch();
+            }
+        }, { rootMargin: '200px' });
+
+        sentinelObserver.observe(loadMoreSentinel);
+    }
+
+    function loadNextBatch() {
+        sentinelLoader.classList.remove('hidden');
+        
+        // Slight delay to allow loader to be seen (and prevent accidental double triggers)
+        setTimeout(() => {
+            currentPage++;
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const batch = currentlyFilteredChannels.slice(start, end);
+            
+            appendChannelBatch(batch);
+            sentinelLoader.classList.add('hidden');
+        }, 300);
+    }
+
     function renderPublicChannels(filteredChannels) {
+        currentlyFilteredChannels = filteredChannels;
+        currentPage = 1;
+        
         channelsGrid.innerHTML = '';
         resultsCount.textContent = `${filteredChannels.length} channels found`;
 
@@ -249,11 +308,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filteredChannels.length === 0) {
             channelsGrid.innerHTML = '<div class="text-center col-span-full py-20 text-slate-500"><i class="fas fa-search-minus text-4xl mb-4 block"></i>No channels match your criteria.</div>';
+            loadMoreSentinel.classList.add('hidden');
             return;
         }
 
+        loadMoreSentinel.classList.remove('hidden');
+        const initialBatch = filteredChannels.slice(0, itemsPerPage);
+        appendChannelBatch(initialBatch);
+        setupSentinelObserver();
+    }
+
+    function appendChannelBatch(batch) {
         const fragment = document.createDocumentFragment();
-        filteredChannels.slice(0, 100).forEach(channel => {
+        batch.forEach(channel => {
             const card = document.createElement('div');
             card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col';
             card.innerHTML = `
@@ -278,9 +345,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${channel.country ? `
                             <span class="text-[10px] text-slate-400 font-medium uppercase">${channel.country}</span>
                         ` : ''}
+                        ${channel.isBlocked ? `
+                            <span class="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-bold">Blocked</span>
+                        ` : ''}
                     </div>
                 </div>
             `;
+            
+            if (channel.isBlocked) {
+                card.classList.add('opacity-60', 'grayscale-[0.5]');
+            }
             
             card.addEventListener('click', () => {
                 playStream(channel.streamUrl, channel.name, channel.category, channel.logo);
@@ -297,18 +371,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCategory = categoryFilter.value;
         const selectedCountry = countryFilter.value;
         const selectedLanguage = languageFilter.value;
+        const showBlocked = showBlockedToggle.checked;
 
         const filtered = channels.filter(ch => 
             (!searchTerm || ch.name.toLowerCase().includes(searchTerm)) &&
             (!selectedCategory || ch.category === selectedCategory) &&
             (!selectedCountry || ch.country === selectedCountry) &&
-            (!selectedLanguage || (ch.languages && ch.languages.includes(selectedLanguage)))
+            (!selectedLanguage || (ch.languages && ch.languages.includes(selectedLanguage))) &&
+            (showBlocked || !ch.isBlocked)
         );
+        
+        // Reset scroll position when filtering
+        document.getElementById('main-content-scroll').scrollTo(0, 0);
+        
         renderPublicChannels(filtered);
     }
 
     // --- Event Listeners ---
-    [searchBar, categoryFilter, countryFilter, languageFilter].forEach(el => {
+    [searchBar, categoryFilter, countryFilter, languageFilter, showBlockedToggle].forEach(el => {
         el.addEventListener('input', filterAndRenderPublicChannels);
         el.addEventListener('change', filterAndRenderPublicChannels);
     });
