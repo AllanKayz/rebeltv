@@ -8,10 +8,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerOverlay = document.getElementById('player-overlay');
     const videoPlayer = document.getElementById('video-player');
     const closePlayer = document.getElementById('close-player');
+    const themeSwitcher = document.getElementById('theme-switcher');
 
     let channels = [];
     let streams = {};
     let logoObserver;
+    let player;
+
+    // --- Theme Management ---
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
+        applyTheme(currentTheme);
+        localStorage.setItem('theme', currentTheme);
+    }
+
+    themeSwitcher.addEventListener('click', toggleTheme);
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
+
+    // --- Player Initialization ---
+    player = videojs(videoPlayer, {
+        autoplay: true,
+        controls: true,
+        preload: 'auto',
+        fluid: true
+    });
 
     async function fetchData() {
         try {
@@ -85,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     observer.unobserve(card);
                 }
             });
-        }, { rootMargin: '0px 0px 200px 0px' }); // Load images 200px before they enter the viewport
+        }, { rootMargin: '0px 0px 200px 0px' });
 
         filteredChannels.forEach(channel => {
             if (!channel.streamUrl) return;
@@ -99,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const logo = document.createElement('img');
             logo.className = 'channel-logo';
-            logo.src = 'placeholder.png'; // Start with a placeholder
+            logo.src = 'placeholder.png';
             logo.dataset.src = channel.logo || 'placeholder.png';
             logo.alt = `${channel.name} Logo`;
 
@@ -147,17 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function playChannel(channelId) {
         const streamUrl = streams[channelId];
         if (streamUrl) {
-            if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
-                const hls = new Hls();
-                hls.loadSource(streamUrl);
-                hls.attachMedia(videoPlayer);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoPlayer.play();
-                });
-            } else {
-                videoPlayer.src = streamUrl;
-                videoPlayer.play();
-            }
+            player.src({
+                src: streamUrl,
+                type: streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+            });
             playerOverlay.style.display = 'flex';
         } else {
             alert('Stream not available for this channel.');
@@ -178,8 +202,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     closePlayer.addEventListener('click', () => {
-        videoPlayer.pause();
-        videoPlayer.src = '';
+        player.pause();
+        player.src('');
         playerOverlay.style.display = 'none';
     });
 
