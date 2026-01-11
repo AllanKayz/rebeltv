@@ -1,169 +1,276 @@
 <!DOCTYPE html>
-<html lang="en" class="">
+<html lang="en" class="dark">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Channel Browser</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://vjs.zencdn.net/7.15.4/video-js.css" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#3498db',
-                        secondary: {
-                            light: '#34495e',
-                            dark: '#ecf0f1'
-                        },
-                        background: {
-                            light: '#f0f2f5',
-                            dark: '#2c3e50'
-                        },
-                        card: {
-                            light: '#ffffff',
-                            dark: '#34495e'
-                        },
-                        text: {
-                            light: '#333333',
-                            dark: '#ecf0f1'
-                        },
-                        'light-text': {
-                            light: '#777777',
-                            dark: '#bdc3c7'
-                        },
-                        border: {
-                            light: '#dddddd',
-                            dark: '#4a6278'
-                        }
-                    }
-                }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REBELTV | Premium IPTV Browser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://vjs.zencdn.net/7.15.4/video-js.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              DEFAULT: '#3b82f6',
+              hover: '#2563eb',
+              glow: 'rgba(59, 130, 246, 0.5)'
+            },
+            glass: {
+              light: 'rgba(255, 255, 255, 0.7)',
+              dark: 'rgba(15, 23, 42, 0.8)',
+              border: 'rgba(255, 255, 255, 0.1)'
             }
+          },
+          backdropBlur: {
+            xs: '2px',
+          }
         }
-    </script>
-    <style>
-        /* Custom scrollbar for webkit browsers */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4a6278;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #5a7892;
-        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
 
-        /* Custom Stream Item */
-        .custom-stream-item:hover .delete-stream-btn {
-            opacity: 1;
-        }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
-        /* Channel Card */
-        .channel-card {
-            @apply bg-card-light dark:bg-card-dark rounded-xl shadow-md overflow-hidden cursor-pointer transition-all duration-300 transform hover:scale-[1.03] hover:-translate-y-1 hover:shadow-2xl border border-border-light dark:border-border-dark hover:border-primary group;
-        }
-        .channel-logo-container {
-            @apply h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-2 overflow-hidden rounded-t-xl;
-        }
-        .channel-logo {
-            @apply max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110;
-        }
-        .channel-info {
-            @apply p-4;
-        }
-        .channel-name {
-            @apply font-bold text-base text-text-light dark:text-text-dark truncate;
-        }
-        .channel-category {
-            @apply text-sm text-light-text-light dark:text-light-text-dark mt-1;
-        }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 10px;
+    }
 
-        /* Player Overlay */
-        .animate-fadeIn {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-    </style>
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+
+    .glass-panel {
+      @apply backdrop-blur-xl border border-white/10 dark:border-white/5;
+    }
+
+    .premium-card {
+      @apply bg-white/80 dark:bg-slate-800/80 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_20px_50px_rgba(0, 0, 0, 0.1)] dark:hover:shadow-[0_20px_50px_rgba(0, 0, 0, 0.3)] border border-white/20 dark:border-white/10 overflow-hidden;
+    }
+
+    .channel-card-glow:hover {
+      box-shadow: 0 0 20px theme('colors.primary.glow');
+    }
+
+    /* Sidebar mobile transition */
+    #sidebar {
+      transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    @media (max-width: 1024px) {
+      #sidebar.hidden-mobile {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+
+      #sidebar.visible-mobile {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Video.js customization */
+    .video-js {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .vjs-big-play-button {
+      border-radius: 50% !important;
+      width: 80px !important;
+      height: 80px !important;
+      line-height: 80px !important;
+      margin-left: -40px !important;
+      margin-top: -40px !important;
+      background-color: theme('colors.primary.DEFAULT') !important;
+      border: none !important;
+    }
+  </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark font-sans">
-    <div id="app" class="flex h-screen">
-        <aside id="sidebar" class="w-80 bg-card-light dark:bg-card-dark p-6 shadow-lg overflow-y-auto border-r border-border-light dark:border-border-dark flex flex-col">
-            <div>
-                <h1 class="text-3xl font-bold text-primary mb-6">REBELTV</h1>
 
-                <!-- Custom Streams Section -->
-                <div class="mb-8">
-                    <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4">Custom Streams</h2>
-                    <form id="custom-stream-form" class="space-y-4">
-                        <input type="text" id="custom-stream-name" placeholder="Stream Name" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
-                        <input type="url" id="custom-stream-url" placeholder="Stream URL (.m3u8, .mp4)" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition" required>
-                        <button type="submit" id="add-stream-btn" class="w-full p-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition">Add Stream</button>
-                    </form>
-                    <div id="custom-streams-list" class="mt-4 space-y-2">
-                        <!-- Custom streams will be listed here -->
-                    </div>
-                </div>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
+  <div id="app" class="flex flex-col lg:flex-row h-screen overflow-hidden">
 
-                <div class="border-t border-border-light dark:border-border-dark my-6"></div>
+    <!-- Mobile Header -->
+    <header
+      class="lg:hidden flex items-center justify-between p-4 glass-panel bg-white/80 dark:bg-slate-900/80 sticky top-0 z-40">
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">REBELTV
+      </h1>
+      <button id="mobile-menu-toggle" class="p-2 text-slate-600 dark:text-slate-300 focus:outline-none"
+        aria-label="Toggle Menu">
+        <i class="fas fa-bars text-xl"></i>
+      </button>
+    </header>
 
-                <!-- Filters Section -->
-                <h2 class="text-xl font-semibold text-secondary-light dark:text-secondary-dark mb-4 flex items-center"><i class="fas fa-filter mr-3"></i>Browse Channels</h2>
-                <input type="text" id="search-bar" placeholder="Search channels..." class="w-full p-3 mb-4 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition">
-                <div class="space-y-4">
-                    <div>
-                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Category</h3>
-                        <select id="category-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
-                            <option value="">All Categories</option>
-                        </select>
-                    </div>
-                    <div>
-                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Country</h3>
-                        <select id="country-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
-                            <option value="">All Countries</option>
-                        </select>
-                    </div>
-                    <div>
-                        <h3 class="text-md font-semibold text-secondary-light dark:text-secondary-dark mb-2">Language</h3>
-                        <select id="language-filter" class="w-full p-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
-                            <option value="">All Languages</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-auto flex justify-center pt-6">
-                <button id="theme-switcher" class="p-3 rounded-full bg-background-light dark:bg-background-dark hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                    <i class="fas fa-sun text-xl text-yellow-500 block dark:hidden"></i>
-                    <i class="fas fa-moon text-xl text-blue-300 hidden dark:block"></i>
-                </button>
-            </div>
-        </aside>
+    <!-- Sidebar -->
+    <aside id="sidebar"
+      class="fixed inset-y-0 left-0 z-50 w-80 lg:relative lg:translate-x-0 hidden-mobile lg:flex flex-col glass-panel bg-white/90 dark:bg-slate-900/95 p-6 shadow-2xl lg:shadow-none overflow-y-auto">
 
-        <main id="main-content" class="flex-grow p-8 overflow-y-auto">
-            <h1 class="text-4xl font-bold text-secondary-light dark:text-secondary-dark mb-8">IPTV Channel Browser</h1>
-            <div id="channel-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                <!-- Channel cards will be inserted here -->
-            </div>
-        </main>
-    </div>
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">REBELTV
+        </h1>
+        <button id="close-mobile-menu" class="lg:hidden p-2 text-slate-500" aria-label="Close Menu">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
 
-    <div id="player-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden animate-fadeIn">
-        <div id="player-container" class="w-full max-w-4xl bg-black shadow-2xl relative">
-            <span id="close-player" class="absolute top-3 right-3 text-white text-3xl cursor-pointer z-10 hover:scale-125 transition-transform">&times;</span>
-            <video id="video-player" class="video-js vjs-default-skin w-full h-full"></video>
+      <!-- Custom Streams Section -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Custom Streams</h2>
+          <button id="toggle-add-stream" class="text-primary hover:text-blue-600 transition" title="Add new stream">
+            <i class="fas fa-plus-circle"></i>
+          </button>
         </div>
-    </div>
 
-    <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="app.js"></script>
+        <form id="custom-stream-form" class="space-y-3 mb-6 hidden animate-fadeIn">
+          <input type="text" id="custom-stream-name" placeholder="Name (e.g. My Channel)" title="Stream Name"
+            aria-label="Stream Name"
+            class="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none transition-all text-sm">
+          <input type="url" id="custom-stream-url" placeholder="URL (.m3u8, .mp4)" title="Stream URL"
+            aria-label="Stream URL"
+            class="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none transition-all text-sm"
+            required>
+          <button type="submit"
+            class="w-full py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 text-sm">
+            Add Stream
+          </button>
+        </form>
+
+        <div id="custom-streams-list" class="space-y-2 max-h-48 overflow-y-auto pr-2">
+          <!-- Custom streams appear here -->
+        </div>
+      </div>
+
+      <div class="h-px bg-slate-200 dark:bg-slate-800 my-6"></div>
+
+      <!-- Browse Section -->
+      <div class="space-y-6">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Browse Channels</h2>
+
+        <div class="relative group">
+          <i
+            class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"></i>
+          <input type="text" id="search-bar" placeholder="Search..." title="Search channels"
+            aria-label="Search channels"
+            class="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none transition-all">
+        </div>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <label for="category-filter" class="text-xs font-semibold text-slate-500 ml-1">Category</label>
+            <select id="category-filter" title="Filter by category"
+              class="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none appearance-none cursor-pointer">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="space-y-2">
+            <label for="country-filter" class="text-xs font-semibold text-slate-500 ml-1">Country</label>
+            <select id="country-filter" title="Filter by country"
+              class="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none appearance-none cursor-pointer">
+              <option value="">All Countries</option>
+            </select>
+          </div>
+          <div class="space-y-2">
+            <label for="language-filter" class="text-xs font-semibold text-slate-500 ml-1">Language</label>
+            <select id="language-filter" title="Filter by language"
+              class="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-primary/50 rounded-xl focus:outline-none appearance-none cursor-pointer">
+              <option value="">All Languages</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Tools -->
+      <div class="mt-auto pt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+        <button id="theme-switcher" title="Toggle dark/light mode" aria-label="Toggle dark/light mode"
+          class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+          <i class="fas fa-sun text-yellow-500 block dark:hidden"></i>
+          <i class="fas fa-moon text-blue-400 hidden dark:block"></i>
+        </button>
+        <div class="text-[10px] text-slate-400 text-right">
+          <p>REBELTV v2.0</p>
+          <p>© 2026 Premium IPTV</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col min-w-0">
+      <div class="flex-grow p-4 lg:p-8 overflow-y-auto" id="main-content-scroll">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div>
+            <p class="text-sm font-semibold text-primary mb-1">Discover</p>
+            <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white">IPTV Browser</h2>
+          </div>
+          <div id="results-count" class="text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+            Loading channels...
+          </div>
+        </div>
+
+        <div id="channel-grid"
+          class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
+          <!-- Enhanced channel cards injected here -->
+        </div>
+
+        <!-- Skeleton Loading State -->
+        <div id="loading-state" class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="h-48 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+          <div class="h-48 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+          <div class="h-48 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+          <div class="h-48 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Premium Player Overlay -->
+  <div id="player-overlay"
+    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] hidden animate-fadeIn">
+
+    <div class="w-full max-w-5xl px-4 flex flex-col">
+      <div class="flex items-center justify-between mb-4 w-full">
+        <div id="playing-info" class="flex items-center gap-3">
+          <div id="playing-logo-container" class="w-10 h-10 rounded-lg bg-white p-1">
+            <img id="playing-logo" src="placeholder.png" class="w-full h-full object-contain" alt="">
+          </div>
+          <div>
+            <h3 id="playing-name" class="text-white font-bold text-lg">Stream Name</h3>
+            <p id="playing-category" class="text-slate-400 text-xs">General</p>
+          </div>
+        </div>
+        <button id="close-player" aria-label="Close player"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-red-500 transition-colors">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div id="player-container"
+        class="aspect-video w-full bg-black rounded-2xl shadow-3xl overflow-hidden ring-1 ring-white/10">
+        <video id="video-player" class="video-js vjs-big-play-centered w-full h-full"></video>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://vjs.zencdn.net/7.15.4/video.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="app.js"></script>
 </body>
+
 </html>

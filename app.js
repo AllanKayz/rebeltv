@@ -1,15 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const channelsGrid = document.getElementById('channel-grid');
+    const loadingState = document.getElementById('loading-state');
     const categoryFilter = document.getElementById('category-filter');
     const countryFilter = document.getElementById('country-filter');
     const languageFilter = document.getElementById('language-filter');
     const searchBar = document.getElementById('search-bar');
+    const resultsCount = document.getElementById('results-count');
+    
     const playerOverlay = document.getElementById('player-overlay');
     const videoPlayer = document.getElementById('video-player');
     const closePlayer = document.getElementById('close-player');
+    const playingName = document.getElementById('playing-name');
+    const playingCategory = document.getElementById('playing-category');
+    const playingLogo = document.getElementById('playing-logo');
+
     const themeSwitcher = document.getElementById('theme-switcher');
     const htmlElement = document.documentElement;
+    
+    const sidebar = document.getElementById('sidebar');
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const closeMobileMenu = document.getElementById('close-mobile-menu');
+    
+    const toggleAddStream = document.getElementById('toggle-add-stream');
     const customStreamForm = document.getElementById('custom-stream-form');
     const customStreamNameInput = document.getElementById('custom-stream-name');
     const customStreamUrlInput = document.getElementById('custom-stream-url');
@@ -22,6 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let customStreams = [];
     let logoObserver;
     let player;
+
+    // --- Mobile Menu Management ---
+    function toggleMobileMenu() {
+        sidebar.classList.toggle('hidden-mobile');
+        sidebar.classList.toggle('visible-mobile');
+    }
+
+    mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+    closeMobileMenu.addEventListener('click', toggleMobileMenu);
+
+    // --- UI Helpers ---
+    toggleAddStream.addEventListener('click', () => {
+        customStreamForm.classList.toggle('hidden');
+        toggleAddStream.querySelector('i').classList.toggle('fa-plus-circle');
+        toggleAddStream.querySelector('i').classList.toggle('fa-minus-circle');
+    });
 
     // --- Theme Management ---
     function applyTheme(theme) {
@@ -47,16 +76,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Player ---
     function initializePlayer() {
-        player = videojs(videoPlayer, {
-            autoplay: true,
-            controls: true,
-            preload: 'auto',
-            fluid: true
-        });
+        if (typeof videojs !== 'undefined') {
+            player = videojs(videoPlayer, {
+                autoplay: true,
+                controls: true,
+                preload: 'auto',
+                fluid: true,
+                responsive: true
+            });
+        }
     }
 
-    function playStream(streamUrl) {
+    function playStream(streamUrl, name = 'Custom Stream', category = 'Manual Link', logo = 'placeholder.png') {
         if (streamUrl) {
+            playingName.textContent = name;
+            playingCategory.textContent = category;
+            playingLogo.src = logo || 'placeholder.png';
+            playingLogo.onerror = () => { playingLogo.src = 'placeholder.png'; };
+
             playerOverlay.classList.remove('hidden');
             const type = streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
             player.src({ src: streamUrl, type });
@@ -85,21 +122,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCustomStreams() {
         customStreamsList.innerHTML = '';
         if (customStreams.length === 0) {
-            customStreamsList.innerHTML = `<p class="text-sm text-light-text-light dark:text-light-text-dark text-center">No custom streams yet.</p>`;
+            customStreamsList.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">No custom streams added.</p>`;
+            return;
         }
         customStreams.forEach(stream => {
             const streamEl = document.createElement('div');
-            streamEl.className = 'custom-stream-item flex items-center justify-between p-2 bg-background-light dark:bg-background-dark rounded-lg';
-            streamEl.dataset.id = stream.id;
+            streamEl.className = 'group flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer';
             
             streamEl.innerHTML = `
-                <p class="font-semibold truncate cursor-pointer flex-grow" title="${stream.name}">${stream.name}</p>
-                <button class="delete-stream-btn text-red-500 hover:text-red-700 opacity-0 transition-opacity ml-2">
-                    <i class="fas fa-trash-alt"></i>
+                <div class="flex items-center gap-2 flex-grow min-w-0">
+                    <i class="fas fa-play-circle text-primary text-sm"></i>
+                    <p class="text-xs font-semibold truncate" title="${stream.name}">${stream.name}</p>
+                </div>
+                <button class="delete-stream-btn text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2 px-1">
+                    <i class="fas fa-times-circle"></i>
                 </button>
             `;
 
-            streamEl.querySelector('p').addEventListener('click', () => playStream(stream.url));
+            streamEl.addEventListener('click', () => playStream(stream.url, stream.name));
             streamEl.querySelector('.delete-stream-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 deleteCustomStream(stream.id);
@@ -123,6 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCustomStreams();
         renderCustomStreams();
         customStreamForm.reset();
+        customStreamForm.classList.add('hidden');
+        toggleAddStream.querySelector('i').classList.replace('fa-minus-circle', 'fa-plus-circle');
     }
 
     function deleteCustomStream(id) {
@@ -136,6 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- IPTV-ORG Channels ---
     async function fetchPublicChannels() {
         try {
+            loadingState.classList.remove('hidden');
+            channelsGrid.innerHTML = '';
+            
             const [channelsRes, streamsRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/channels.json`),
                 fetch(`${API_BASE_URL}/streams.json`),
@@ -148,25 +193,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 return acc;
             }, {});
 
-            channels = channelsData.map(ch => ({ ...ch, streamUrl: streams[ch.id] }));
+            channels = channelsData
+                .filter(ch => streams[ch.id])
+                .map(ch => ({ ...ch, streamUrl: streams[ch.id] }));
 
             const [countriesRes, categoriesRes, languagesRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/countries.json`),
                 fetch(`${API_BASE_URL}/categories.json`),
                 fetch(`${API_BASE_URL}/languages.json`)
             ]);
+            
             populateFilters(await categoriesRes.json(), await countriesRes.json(), await languagesRes.json());
+            
+            loadingState.classList.add('hidden');
             filterAndRenderPublicChannels();
 
         } catch (error) {
             console.error('Error fetching public channels:', error);
-            channelsGrid.innerHTML = '<p class="text-center text-red-500 col-span-full">Error loading public channels.</p>';
+            loadingState.classList.add('hidden');
+            channelsGrid.innerHTML = '<div class="text-center col-span-full py-20"><i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4 block"></i><p class="text-slate-500">Error loading channels. Please try again later.</p></div>';
         }
     }
 
     function populateFilters(categories, countries, languages) {
-        const populate = (filterEl, items) => {
-            items.forEach(item => {
+        const populate = (filterEl, items, label) => {
+            items.sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.id || item.code;
                 option.textContent = item.name;
@@ -180,6 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderPublicChannels(filteredChannels) {
         channelsGrid.innerHTML = '';
+        resultsCount.textContent = `${filteredChannels.length} channels found`;
+
         if (logoObserver) logoObserver.disconnect();
 
         logoObserver = new IntersectionObserver((entries, observer) => {
@@ -188,34 +241,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     const card = entry.target;
                     const logo = card.querySelector('.channel-logo');
                     logo.src = logo.dataset.src;
-                    logo.onerror = () => { logo.src = 'placeholder.png'; }; // Fallback image
+                    logo.onerror = () => { logo.src = 'placeholder.png'; };
                     observer.unobserve(card);
                 }
             });
         }, { rootMargin: '0px 0px 300px 0px' });
 
         if (filteredChannels.length === 0) {
-            channelsGrid.innerHTML = '<p class="text-center col-span-full">No channels found.</p>';
+            channelsGrid.innerHTML = '<div class="text-center col-span-full py-20 text-slate-500"><i class="fas fa-search-minus text-4xl mb-4 block"></i>No channels match your criteria.</div>';
             return;
         }
 
-        filteredChannels.forEach(channel => {
-            if (!channel.streamUrl) return;
+        const fragment = document.createDocumentFragment();
+        filteredChannels.slice(0, 100).forEach(channel => {
             const card = document.createElement('div');
-            card.className = 'channel-card';
-            card.dataset.streamUrl = channel.streamUrl;
+            card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col';
             card.innerHTML = `
-                <div class="channel-logo-container">
-                    <img class="channel-logo" src="placeholder.png" data-src="${channel.logo || 'placeholder.png'}" alt="${channel.name} Logo">
+                <div class="h-32 flex items-center justify-center bg-white p-6 overflow-hidden relative">
+                    <img class="channel-logo w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
+                        src="placeholder.png" 
+                        data-src="${channel.logo || 'placeholder.png'}" 
+                        alt="${channel.name}">
+                    <div class="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
+                    <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg">
+                            <i class="fas fa-play text-[10px]"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="channel-info">
-                    <p class="channel-name">${channel.name}</p>
-                    <p class="channel-category">${channel.category || 'General'}</p>
+                <div class="p-4 flex-grow">
+                    <h3 class="font-bold text-sm truncate text-slate-900 dark:text-white" title="${channel.name}">${channel.name}</h3>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 capitalize">
+                            ${channel.category || 'General'}
+                        </span>
+                        ${channel.country ? `
+                            <span class="text-[10px] text-slate-400 font-medium uppercase">${channel.country}</span>
+                        ` : ''}
+                    </div>
                 </div>
             `;
-            channelsGrid.appendChild(card);
+            
+            card.addEventListener('click', () => {
+                playStream(channel.streamUrl, channel.name, channel.category, channel.logo);
+            });
+
+            fragment.appendChild(card);
             logoObserver.observe(card);
         });
+        channelsGrid.appendChild(fragment);
     }
 
     function filterAndRenderPublicChannels() {
@@ -237,13 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
     [searchBar, categoryFilter, countryFilter, languageFilter].forEach(el => {
         el.addEventListener('input', filterAndRenderPublicChannels);
         el.addEventListener('change', filterAndRenderPublicChannels);
-    });
-
-    channelsGrid.addEventListener('click', (e) => {
-        const card = e.target.closest('.channel-card');
-        if (card && card.dataset.streamUrl) {
-            playStream(card.dataset.streamUrl);
-        }
     });
 
     // --- Initial Load ---
