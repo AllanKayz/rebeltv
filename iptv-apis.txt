@@ -1,13 +1,13 @@
-1. https://iptv-org.github.io/api/channels.json
-2. https://iptv-org.github.io/api/feeds.json
-3. https://iptv-org.github.io/api/logos.json
-4. https://iptv-org.github.io/api/streams.json
-5. https://iptv-org.github.io/api/guides.json
-6. https://iptv-org.github.io/api/categories.json
-7. https://iptv-org.github.io/api/languages.json
-8. https://iptv-org.github.io/api/countries.json
-9. https://iptv-org.github.io/api/subdivisions.json
-10. https://iptv-org.github.io/api/cities.json
-11. https://iptv-org.github.io/api/regions.json
-12. https://iptv-org.github.io/api/timezones.json
-13. https://iptv-org.github.io/api/blocklist.json
+https://iptv-org.github.io/api/channels.json
+https://iptv-org.github.io/api/feeds.json
+https://iptv-org.github.io/api/logos.json
+https://iptv-org.github.io/api/streams.json
+https://iptv-org.github.io/api/guides.json
+https://iptv-org.github.io/api/categories.json
+https://iptv-org.github.io/api/languages.json
+https://iptv-org.github.io/api/countries.json
+https://iptv-org.github.io/api/subdivisions.json
+https://iptv-org.github.io/api/cities.json
+https://iptv-org.github.io/api/regions.json
+https://iptv-org.github.io/api/timezones.json
+https://iptv-org.github.io/api/blocklist.json

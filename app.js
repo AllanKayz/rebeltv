@@ -1,220 +1,184 @@
-
 document.addEventListener('DOMContentLoaded', () => {
-    const loadingOverlay = document.getElementById('loading-overlay');
+    const API_BASE_URL = 'https://iptv-org.github.io/api';
+    const channelsGrid = document.getElementById('channel-grid');
+    const categoryFilter = document.getElementById('category-filter');
+    const countryFilter = document.getElementById('country-filter');
+    const languageFilter = document.getElementById('language-filter');
+    const searchBar = document.getElementById('search-bar');
+    const playerOverlay = document.getElementById('player-overlay');
     const videoPlayer = document.getElementById('video-player');
-    const channelList = document.getElementById('channel-list');
-    const searchInput = document.getElementById('search-channels');
-    const newStreamUrlInput = document.getElementById('new-stream-url');
-    const addStreamBtn = document.getElementById('add-stream-btn');
-    const epgModal = document.getElementById('epg-modal');
-    const epgChannelName = document.getElementById('epg-channel-name');
-    const epgGuide = document.getElementById('epg-guide');
-    const closeEpgModal = document.getElementById('close-epg-modal');
-    const nowPlayingTitle = document.getElementById('now-playing-title');
-    const nowPlayingDescription = document.getElementById('now-playing-description');
-    const nowPlayingLogo = document.getElementById('now-playing-logo');
-    const menuToggle = document.getElementById('menu-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const closePlayer = document.getElementById('close-player');
 
-    let hls;
-    let allChannels = [];
-    let filteredChannels = [];
-    let currentChannelIndex = 0;
-    const channelsPerBatch = 50;
+    let channels = [];
+    let streams = {};
+    let logos = {};
 
-    const fetchJSON = async (url) => {
+    async function fetchData() {
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
+            const [channelsRes, countriesRes, categoriesRes, streamsRes, logosRes, languagesRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/channels.json`),
+                fetch(`${API_BASE_URL}/countries.json`),
+                fetch(`${API_BASE_URL}/categories.json`),
+                fetch(`${API_BASE_URL}/streams.json`),
+                fetch(`${API_BASE_URL}/logos.json`),
+                fetch(`${API_BASE_URL}/languages.json`)
+            ]);
+
+            const channelsData = await channelsRes.json();
+            const countriesData = await countriesRes.json();
+            const categoriesData = await categoriesRes.json();
+            const streamsData = await streamsRes.json();
+            const logosData = await logosRes.json();
+            const languagesData = await languagesRes.json();
+
+            streams = streamsData.reduce((acc, stream) => {
+                acc[stream.channel] = stream.url;
+                return acc;
+            }, {});
+
+            logos = logosData.reduce((acc, logo) => {
+                acc[logo.id] = logo.url;
+                return acc;
+            }, {});
+
+            channels = channelsData.map(channel => ({
+                ...channel,
+                streamUrl: streams[channel.id],
+            }));
+
+            populateFilters(categoriesData, countriesData, languagesData);
+            renderChannels(channels);
+
         } catch (error) {
-            console.error(`Failed to fetch ${url}:`, error);
-            return [];
+            console.error('Error fetching data:', error);
+            channelsGrid.innerHTML = '<p>Error loading channels. Please try again later.</p>';
         }
-    };
+    }
 
-    const playChannel = (channel) => {
-        if (hls) {
-            hls.destroy();
-        }
-        hls = new Hls();
-        hls.loadSource(channel.url);
-        hls.attachMedia(videoPlayer);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoPlayer.play().catch(e => console.error("Autoplay was prevented:", e));
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                switch(data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.error('Fatal network error encountered, trying to recover...');
-                        hls.startLoad();
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.error('Fatal media error encountered, trying to recover...');
-                        hls.recoverMediaError();
-                        break;
-                    default:
-                        console.error('An unrecoverable error occurred', data);
-                        hls.destroy();
-                        break;
-                }
-            }
+    function populateFilters(categories, countries, languages) {
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            categoryFilter.appendChild(option);
         });
 
-        nowPlayingTitle.textContent = channel.name;
-        nowPlayingDescription.textContent = `Currently playing ${channel.name}. Enjoy the stream!`;
-        nowPlayingLogo.src = channel.logo || 'placeholder.png';
-        nowPlayingLogo.onerror = () => { nowPlayingLogo.src = 'placeholder.png'; };
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country.code;
+            option.textContent = country.name;
+            countryFilter.appendChild(option);
+        });
         
-        document.querySelectorAll('.channel-card.active-channel').forEach(c => c.classList.remove('active-channel'));
-        const activeCard = channelList.querySelector(`[data-channel-id='${channel.id}']`);
-        if (activeCard) {
-            activeCard.classList.add('active-channel');
-        }
+        languages.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.code;
+            option.textContent = lang.name;
+            languageFilter.appendChild(option);
+        });
+    }
 
-        if (window.innerWidth < 768) {
-            sidebar.classList.add('-translate-x-full');
-            sidebarOverlay.classList.add('hidden');
-        }
-    };
+    function renderChannels(filteredChannels) {
+        channelsGrid.innerHTML = '';
+        filteredChannels.forEach(channel => {
+            if (!channel.streamUrl) return; // Don't render channels without a stream URL
 
-    const renderChannel = (channel) => {
-        const channelCard = document.createElement('div');
-        channelCard.className = 'channel-card p-3 rounded-lg flex items-center space-x-3 cursor-pointer border-2 border-transparent';
-        channelCard.dataset.channelId = channel.id;
-        channelCard.innerHTML = `
-            <img data-src="${channel.logo || 'placeholder.png'}" alt="${channel.name} Logo" class="lazy w-12 h-12 rounded-md bg-gray-700/50">
-            <span class="font-semibold truncate">${channel.name}</span>
-        `;
-        channelCard.addEventListener('click', () => playChannel(channel));
-        return channelCard;
-    };
-    
-    const renderChannels = (channels, append = false) => {
-        if (!append) {
-            while (channelList.firstChild && channelList.firstChild.id !== 'sentinel') {
-                channelList.removeChild(channelList.firstChild);
-            }
-        }
-        const fragment = document.createDocumentFragment();
-        channels.forEach((channel, index) => {
-            const channelCard = renderChannel(channel);
-            channelCard.style.animationDelay = `${index * 50}ms`;
-            fragment.appendChild(channelCard);
+            const card = document.createElement('div');
+            card.className = 'channel-card';
+            card.dataset.channelId = channel.id;
+
+            const logoContainer = document.createElement('div');
+            logoContainer.className = 'channel-logo-container';
+
+            const logo = document.createElement('img');
+            logo.className = 'channel-logo';
+            logo.src = channel.logo || 'placeholder.png'; // Use a placeholder if no logo
+            logo.alt = `${channel.name} Logo`;
+            logo.onerror = () => { logo.src = 'placeholder.png'; }; // Fallback for broken logo links
+
+            logoContainer.appendChild(logo);
+
+            const info = document.createElement('div');
+            info.className = 'channel-info';
+
+            const name = document.createElement('p');
+            name.className = 'channel-name';
+            name.textContent = channel.name;
+
+            const category = document.createElement('p');
+            category.className = 'channel-category';
+            category.textContent = channel.category || 'General';
+
+            info.appendChild(name);
+            info.appendChild(category);
+            card.appendChild(logoContainer);
+            card.appendChild(info);
+            channelsGrid.appendChild(card);
+        });
+    }
+
+    function filterAndRender() {
+        const searchTerm = searchBar.value.toLowerCase();
+        const selectedCategory = categoryFilter.value;
+        const selectedCountry = countryFilter.value;
+        const selectedLanguage = languageFilter.value;
+
+        const filteredChannels = channels.filter(channel => {
+            const nameMatch = channel.name.toLowerCase().includes(searchTerm);
+            const categoryMatch = !selectedCategory || channel.category === selectedCategory;
+            const countryMatch = !selectedCountry || channel.country === selectedCountry;
+            const languageMatch = !selectedLanguage || (channel.languages && channel.languages.includes(selectedLanguage));
+
+            return nameMatch && categoryMatch && countryMatch && languageMatch;
         });
 
-        const sentinelEl = document.getElementById('sentinel');
-        if (sentinelEl) {
-            channelList.insertBefore(fragment, sentinelEl);
+        renderChannels(filteredChannels);
+    }
+
+    function playChannel(channelId) {
+        const streamUrl = streams[channelId];
+        if (streamUrl) {
+            if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
+                const hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = streamUrl;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play();
+                });
+            } else {
+                videoPlayer.src = streamUrl;
+                videoPlayer.play();
+            }
+            playerOverlay.style.display = 'flex';
         } else {
-            channelList.appendChild(fragment);
+            alert('Stream not available for this channel.');
         }
+    }
 
-        lazyLoadImages();
-    };
+    // Event Listeners
+    searchBar.addEventListener('input', filterAndRender);
+    categoryFilter.addEventListener('change', filterAndRender);
+    countryFilter.addEventListener('change', filterAndRender);
+    languageFilter.addEventListener('change', filterAndRender);
 
-    const loadMoreChannels = () => {
-        const nextBatch = filteredChannels.slice(currentChannelIndex, currentChannelIndex + channelsPerBatch);
-        renderChannels(nextBatch, true);
-        currentChannelIndex += channelsPerBatch;
-    };
+    channelsGrid.addEventListener('click', (e) => {
+        const card = e.target.closest('.channel-card');
+        if (card) {
+            playChannel(card.dataset.channelId);
+        }
+    });
 
-    let lazyLoadObserver;
-    const lazyLoadImages = () => {
-        if (lazyLoadObserver) lazyLoadObserver.disconnect();
-        lazyLoadObserver = new IntersectionObserver((entries, obs) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    img.classList.remove('lazy');
-                    obs.unobserve(img);
-                }
-            });
-        }, { root: channelList, rootMargin: "0px 0px 200px 0px" });
+    closePlayer.addEventListener('click', () => {
+        videoPlayer.pause();
+        videoPlayer.src = '';
+        playerOverlay.style.display = 'none';
+    });
 
-        document.querySelectorAll('img.lazy').forEach(img => {
-            lazyLoadObserver.observe(img);
-        });
-    };
-
-    const filterChannels = () => {
-        const query = searchInput.value.toLowerCase();
-        filteredChannels = allChannels.filter(c => c.name.toLowerCase().includes(query));
-        currentChannelIndex = 0;
-        renderChannels([], false); // Clear the list, preserving the sentinel
-        loadMoreChannels();
-    };
-
-    const init = async () => {
-        loadingOverlay.style.display = 'flex';
-
-        const streams = await fetchJSON('https://iptv-org.github.io/api/streams.json');
-        const channels = await fetchJSON('https://iptv-org.github.io/api/channels.json');
-        
-        const channelsMap = new Map(channels.map(c => [c.id, c]));
-
-        allChannels = streams
-            .map(stream => {
-                const channelInfo = channelsMap.get(stream.channel);
-                return channelInfo ? {
-                    id: channelInfo.id,
-                    name: channelInfo.name,
-                    url: stream.url,
-                    logo: channelInfo.logo,
-                } : null;
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        filteredChannels = [...allChannels];
-        loadMoreChannels();
-
-        searchInput.addEventListener('input', filterChannels);
-        
-        const infiniteScrollObserver = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMoreChannels();
-                }
-            },
-            { threshold: 1.0 }
-        );
-
-        const sentinel = document.createElement('div');
-        sentinel.id = 'sentinel';
-        channelList.appendChild(sentinel);
-        infiniteScrollObserver.observe(sentinel);
-
-        addStreamBtn.addEventListener('click', () => {
-            const url = newStreamUrlInput.value.trim();
-            if (url) {
-                const newChannel = { id: `custom-${Date.now()}`, name: 'Custom Stream', url, logo: 'placeholder.png' };
-                allChannels.unshift(newChannel);
-                filterChannels();
-                playChannel(newChannel);
-                newStreamUrlInput.value = '';
-            }
-        });
-
-        loadingOverlay.style.display = 'none';
-
-        const setupUIEventListeners = () => {
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('-translate-x-full');
-                sidebarOverlay.classList.toggle('hidden');
-            });
-
-            sidebarOverlay.addEventListener('click', () => {
-                sidebar.classList.add('-translate-x-full');
-                sidebarOverlay.classList.add('hidden');
-            });
-        };
-
-        setupUIEventListeners();
-    };
-
-    init();
+    // Initial data fetch
+    fetchData();
 });

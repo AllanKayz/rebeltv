@@ -3,212 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REBELTV - Modern Streaming Experience</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#111827">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>IPTV Channel Browser</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #3b82f6;
-            --background-dark: #111827;
-            --text-dark: #f9fafb;
-            --background-light: #f9fafb;
-            --text-light: #111827;
-            --card-background-dark: rgba(31, 41, 55, 0.5);
-            --card-border-dark: rgba(55, 65, 81, 0.5);
-            --card-background-light: rgba(255, 255, 255, 0.5);
-            --card-border-light: rgba(229, 231, 235, 0.5);
-        }
-        * {
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }
-        html, body {
-            height: 100%;
-            margin: 0;
-            scroll-behavior: smooth;
-        }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--background-dark);
-            color: var(--text-dark);
-            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            font-family: sans-serif;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
         }
-        body.light {
-            background-color: var(--background-light);
-            color: var(--text-light);
-            background-image: url('https://www.transparenttextures.com/patterns/light-sketch.png');
+        #app {
+            display: flex;
+            height: 100vh;
         }
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        #sidebar {
+            width: 250px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
         }
-        body.light .glass-effect {
-            background: rgba(255, 255, 255, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
         }
-
-        .video-container {
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        #search-bar {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            margin-bottom: 20px;
+        }
+        .filter-group h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #555;
+        }
+        .filter-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #channel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
         }
         .channel-card {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
         .channel-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
-        .active-channel {
-            border-color: var(--primary-color) !important;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        .channel-logo-container {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f8f8;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .channel-logo {
+            max-width: 80%;
+            max-height: 80%;
         }
-        .channel-card {
-            animation: fadeIn 0.3s ease-out forwards;
+        .channel-info {
+            padding: 15px;
+        }
+        .channel-name {
+            font-weight: bold;
+            font-size: 1em;
+            margin: 0 0 10px;
+        }
+        .channel-category {
+            font-size: 0.9em;
+            color: #777;
+        }
+        #player-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #player-container {
+            width: 80%;
+            max-width: 960px;
+            background-color: #000;
+            position: relative;
+        }
+        #player-container video {
+            width: 100%;
+            height: auto;
+        }
+        #close-player {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            color: #fff;
+            cursor: pointer;
         }
     </style>
 </head>
-<body class="dark">
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50">
-        <div class="flex flex-col items-center">
-            <i class="fas fa-satellite-dish text-5xl text-blue-500 animate-pulse"></i>
-            <p class="text-xl mt-4">Tuning in...</p>
-        </div>
-    </div>
-
-    <header class="md:hidden flex items-center justify-between h-16 px-4 border-b border-gray-700/50 glass-effect">
-        <button id="menu-toggle" class="text-2xl">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="flex items-center">
-            <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
-            <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
-        </div>
-        <div></div>
-    </header>
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
-    <div class="flex h-[calc(100vh-4rem)] md:h-screen">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 flex-col glass-effect fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-40 md:flex">
-            <div class="flex items-center justify-center h-16 border-b border-gray-700/50 flex-shrink-0">
-                <i class="fas fa-satellite-dish text-3xl text-blue-500"></i>
-                <h1 class="text-2xl font-bold ml-2">REBELTV</h1>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <h2><i class="fas fa-filter"></i> Filters</h2>
+            <input type="text" id="search-bar" placeholder="Search channels...">
+            <div class="filter-group">
+                <h3>Category</h3>
+                <select id="category-filter">
+                    <option value="">All Categories</option>
+                </select>
             </div>
-            <div class="p-4 flex-shrink-0">
-                <div class="relative">
-                    <input id="search-channels" type="text" placeholder="Search channels..." class="w-full bg-transparent border border-gray-700/50 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                </div>
+            <div class="filter-group">
+                <h3>Country</h3>
+                <select id="country-filter">
+                    <option value="">All Countries</option>
+                </select>
             </div>
-            <div class="flex-1 p-4 overflow-y-auto">
-                <div id="channel-list" class="space-y-2">
-                    <!-- Channel items will be populated here -->
-                </div>
-            </div>
-            <div class="p-4 border-t border-gray-700/50 flex-shrink-0">
-                <div id="add-stream-container">
-                    <input id="new-stream-url" type="text" placeholder="Add custom stream URL" class="w-full bg-transparent border border-gray-700/50 rounded-lg p-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 glass-effect">
-                    <button id="add-stream-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold glass-effect">
-                        <i class="fas fa-plus mr-2"></i>Add Stream
-                    </button>
-                </div>
-                <div class="flex items-center justify-between mt-4">
-                     <span class="text-sm" id="theme-label">Dark Mode</span>
-                    <button id="theme-toggle" class="w-12 h-6 bg-gray-700 rounded-full flex items-center px-1">
-                        <span class="w-4 h-4 bg-white rounded-full transition-transform duration-300 transform"></span>
-                    </button>
-                </div>
+            <div class="filter-group">
+                <h3>Language</h3>
+                <select id="language-filter">
+                    <option value="">All Languages</option>
+                </select>
             </div>
         </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col" style="background-image: url('https://www.transparenttextures.com/patterns/gplay.png');">
-            <div id="video-section" class="flex-1 flex items-center justify-center p-4">
-                <div class="w-full max-w-6xl aspect-video video-container rounded-xl overflow-hidden glass-effect">
-                    <video id="video-player" controls class="w-full h-full"></video>
-                </div>
-            </div>
-            <div id="now-playing-card" class="p-4 glass-effect border-t border-gray-700/50">
-                <div class="flex items-center">
-                    <img id="now-playing-logo" src="placeholder.png" alt="Channel Logo" class="w-12 h-12 md:w-16 md:h-16 rounded-lg mr-4">
-                    <div class="flex-1">
-                        <h3 id="now-playing-title" class="font-semibold text-lg md:text-xl truncate">Select a channel to start watching</h3>
-                        <p id="now-playing-description" class="text-xs md:text-sm opacity-75 truncate">Your modern streaming experience</p>
-                    </div>
-                </div>
-            </div>
+        <main id="main-content">
+            <h1>IPTV Channel Browser</h1>
+            <div id="channel-grid"></div>
         </main>
     </div>
-
-    <!-- EPG Modal -->
-    <div id="epg-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50 p-4">
-        <div class="p-4 md:p-6 rounded-xl max-w-2xl w-full shadow-2xl glass-effect">
-            <div class="flex items-center justify-between mb-4">
-                <h2 id="epg-channel-name" class="text-2xl font-bold mb-4">EPG Guide</h2>
-                <button id="close-epg-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="epg-guide" class="overflow-y-auto" style="max-height: 60vh;">
-                <!-- EPG content will be populated here -->
-            </div>
+    <div id="player-overlay">
+        <div id="player-container">
+            <span id="close-player">&times;</span>
+            <video id="video-player" controls autoplay></video>
         </div>
     </div>
-    <script src="app.js" defer></script>
-    <script>
-        // PWA Installation
-        let deferredPrompt;
-        const installButton = document.getElementById('install-button');
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            if(installButton) {
-                installButton.style.display = 'block';
-                installButton.addEventListener('click', () => {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('User accepted the install prompt');
-                        }
-                        deferredPrompt = null;
-                    });
-                });
-            }
-        });
-
-        // Theme Toggle
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeLabel = document.getElementById('theme-label');
-        const body = document.body;
-        const toggleCircle = themeToggle.querySelector('span');
-
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        setTheme(savedTheme);
-
-        themeToggle.addEventListener('click', () => {
-            const newTheme = body.classList.contains('dark') ? 'light' : 'dark';
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-        });
-
-        function setTheme(theme) {
-            body.classList.toggle('dark', theme === 'dark');
-            body.classList.toggle('light', theme === 'light');
-            themeLabel.textContent = theme === 'dark' ? 'Dark Mode' : 'Light Mode';
-            toggleCircle.style.transform = theme === 'dark' ? 'translateX(0)' : 'translateX(1.25rem)';
-
-            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', theme === 'dark' ? '#111827' : '#f9fafb');
-            }
-        }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="app.js"></script>
 </body>
 </html>
