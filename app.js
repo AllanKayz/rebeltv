@@ -11,16 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let channels = [];
     let streams = {};
-    let logos = {};
+    let logoObserver;
 
     async function fetchData() {
         try {
-            const [channelsRes, countriesRes, categoriesRes, streamsRes, logosRes, languagesRes] = await Promise.all([
+            const [channelsRes, countriesRes, categoriesRes, streamsRes, languagesRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/channels.json`),
                 fetch(`${API_BASE_URL}/countries.json`),
                 fetch(`${API_BASE_URL}/categories.json`),
                 fetch(`${API_BASE_URL}/streams.json`),
-                fetch(`${API_BASE_URL}/logos.json`),
                 fetch(`${API_BASE_URL}/languages.json`)
             ]);
 
@@ -28,16 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const countriesData = await countriesRes.json();
             const categoriesData = await categoriesRes.json();
             const streamsData = await streamsRes.json();
-            const logosData = await logosRes.json();
             const languagesData = await languagesRes.json();
 
             streams = streamsData.reduce((acc, stream) => {
                 acc[stream.channel] = stream.url;
-                return acc;
-            }, {});
-
-            logos = logosData.reduce((acc, logo) => {
-                acc[logo.id] = logo.url;
                 return acc;
             }, {});
 
@@ -80,8 +73,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderChannels(filteredChannels) {
         channelsGrid.innerHTML = '';
+        if (logoObserver) logoObserver.disconnect();
+
+        logoObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const logo = card.querySelector('.channel-logo');
+                    logo.src = logo.dataset.src;
+                    logo.onerror = () => { logo.src = 'placeholder.png'; };
+                    observer.unobserve(card);
+                }
+            });
+        }, { rootMargin: '0px 0px 200px 0px' }); // Load images 200px before they enter the viewport
+
         filteredChannels.forEach(channel => {
-            if (!channel.streamUrl) return; // Don't render channels without a stream URL
+            if (!channel.streamUrl) return;
 
             const card = document.createElement('div');
             card.className = 'channel-card';
@@ -92,9 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const logo = document.createElement('img');
             logo.className = 'channel-logo';
-            logo.src = channel.logo || 'placeholder.png'; // Use a placeholder if no logo
+            logo.src = 'placeholder.png'; // Start with a placeholder
+            logo.dataset.src = channel.logo || 'placeholder.png';
             logo.alt = `${channel.name} Logo`;
-            logo.onerror = () => { logo.src = 'placeholder.png'; }; // Fallback for broken logo links
 
             logoContainer.appendChild(logo);
 
@@ -114,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
             card.appendChild(logoContainer);
             card.appendChild(info);
             channelsGrid.appendChild(card);
+
+            logoObserver.observe(card);
         });
     }
 
@@ -143,11 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 hls.loadSource(streamUrl);
                 hls.attachMedia(videoPlayer);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoPlayer.play();
-                });
-            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                videoPlayer.src = streamUrl;
-                videoPlayer.addEventListener('loadedmetadata', () => {
                     videoPlayer.play();
                 });
             } else {
