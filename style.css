@@ -1,0 +1,56 @@
+/* Global Styles */
+
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+}
+
+/* Sidebar fixed width and transitions */
+:root {
+    --sidebar-width: 320px;
+    /* Fixed sidebar width (equivalent to w-80) */
+}
+
+#sidebar {
+    width: var(--sidebar-width);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
+}
+
+@media (max-width: 1024px) {
+    #sidebar.hidden-mobile {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    #sidebar.visible-mobile {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@media (min-width: 1025px) {
+    #sidebar.sidebar-collapsed {
+        transform: translateX(-100%);
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+/* Video.js customization */
+.video-js {
+    font-family: 'Outfit', sans-serif;
+}

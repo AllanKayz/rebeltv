@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3b82f6">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="webmanifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png">
   <title>REBELTV | Premium IPTV Browser</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,25 +41,8 @@
       }
     }
   </script>
-  <style>
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.3);
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(148, 163, 184, 0.5);
-    }
-
+  <link rel="stylesheet" href="style.css">
+  <style type="text/tailwindcss">
     .glass-panel {
       @apply backdrop-blur-xl border border-white/10 dark:border-white/5;
     }
@@ -70,42 +53,6 @@
 
     .channel-card-glow:hover {
       box-shadow: 0 0 20px theme('colors.primary.glow');
-    }
-
-    /* Sidebar fixed width and transitions */
-    :root {
-      --sidebar-width: 320px;
-      /* Fixed sidebar width (equivalent to w-80) */
-    }
-
-    #sidebar {
-      width: var(--sidebar-width);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
-    }
-
-    @media (max-width: 1024px) {
-      #sidebar.hidden-mobile {
-        transform: translateX(-100%);
-        opacity: 0;
-      }
-
-      #sidebar.visible-mobile {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @media (min-width: 1025px) {
-      #sidebar.sidebar-collapsed {
-        transform: translateX(-100%);
-        opacity: 0;
-        pointer-events: none;
-      }
-    }
-
-    /* Video.js customization */
-    .video-js {
-      font-family: 'Outfit', sans-serif;
     }
 
     .vjs-big-play-button {
@@ -260,7 +207,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-grow flex flex-col min-w-0">
+    <main class="flex-grow flex flex-col min-w-0 overflow-hidden">
       <div class="flex-grow p-4 lg:p-8 overflow-y-auto" id="main-content-scroll">
         <div
           class="sticky top-0 z-30 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md -mx-4 lg:-mx-8 px-4 lg:px-8 py-4 mb-4 border-b border-transparent transition-all duration-300"
