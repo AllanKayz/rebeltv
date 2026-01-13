@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .glass-panel {
+        @apply backdrop-blur-xl border border-white/10 dark:border-white/5;
+    }
+
+    .premium-card {
+        @apply bg-white/80 dark:bg-slate-800/80 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-premium dark:hover:shadow-premium-dark border border-white/20 dark:border-white/10 overflow-hidden;
+    }
+}
+
+.channel-card-glow:hover {
+    box-shadow: 0 0 20px theme('colors.primary.glow');
+}
+
+.vjs-big-play-button {
+    border-radius: 50% !important;
+    width: 80px !important;
+    height: 80px !important;
+    line-height: 80px !important;
+    margin-left: -40px !important;
+    margin-top: -40px !important;
+    background-color: theme('colors.primary.DEFAULT') !important;
+    border: none !important;
+}

@@ -1,0 +1,28 @@
+{
+  "name": "rebeltv",
+  "version": "1.0.0",
+  "description": "A web application that allows you to browse, filter, and watch IPTV channels from around the world. This application uses the free and open-source API from [iptv-org](https://github.com/iptv-org/iptv).",
+  "main": "app.js",
+  "scripts": {
+    "dev": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
+    "build": "tailwindcss -i ./src/input.css -o ./dist/output.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AllanKayz/rebeltv.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/AllanKayz/rebeltv/issues"
+  },
+  "homepage": "https://github.com/AllanKayz/rebeltv#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
+  }
+}
