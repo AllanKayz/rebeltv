@@ -36,6 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadMoreSentinel = document.getElementById('load-more-sentinel');
     const sentinelLoader = loadMoreSentinel.querySelector('.sentinel-loader');
+    const showFavoritesToggle = document.getElementById('show-favorites-only');
+    const favoritesCountBadge = document.getElementById('favorites-count-badge');
+    const refreshDataBtn = document.getElementById('refresh-data-btn');
+    const contentHeader = document.getElementById('content-header');
+    const mainContentScroll = document.getElementById('main-content-scroll');
 
     // --- State ---
     const API_BASE_URL = 'https://iptv-org.github.io/api';
@@ -44,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let blocklist = new Set();
     let externalLogos = {};
     let customStreams = [];
+    let favorites = new Set(); // Favorite channel IDs
+    let guides = {}; // EPG guides data
+    let feeds = {}; // Feeds data
     let logoObserver;
     let sentinelObserver;
     let player;
@@ -111,6 +119,74 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTheme('dark');
         }
     }
+
+    // --- PWA Service Worker ---
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => {
+                    console.log('Service Worker registered successfully:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+    }
+
+    // --- Favorites Management ---
+    function loadFavorites() {
+        const saved = localStorage.getItem('favorites');
+        favorites = saved ? new Set(JSON.parse(saved)) : new Set();
+        updateFavoritesCount();
+    }
+
+    function saveFavorites() {
+        localStorage.setItem('favorites', JSON.stringify([...favorites]));
+        updateFavoritesCount();
+    }
+
+    function toggleFavorite(channelId, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        if (favorites.has(channelId)) {
+            favorites.delete(channelId);
+        } else {
+            favorites.add(channelId);
+        }
+        saveFavorites();
+        
+        // Update UI if favorites view is active
+        if (showFavoritesToggle.checked) {
+            filterAndRenderPublicChannels();
+        }
+    }
+
+    function updateFavoritesCount() {
+        const count = favorites.size;
+        if (count > 0) {
+            favoritesCountBadge.textContent = count;
+            favoritesCountBadge.classList.remove('hidden');
+        } else {
+            favoritesCountBadge.classList.add('hidden');
+        }
+    }
+
+    // --- Sticky Header Scroll Behavior ---
+    let lastScrollTop = 0;
+    mainContentScroll.addEventListener('scroll', () => {
+        const scrollTop = mainContentScroll.scrollTop;
+        
+        if (scrollTop > 20) {
+            contentHeader.classList.add('border-slate-200', 'dark:border-slate-800', 'shadow-lg', 'shadow-slate-200/50', 'dark:shadow-slate-950/50');
+        } else {
+            contentHeader.classList.remove('border-slate-200', 'dark:border-slate-800', 'shadow-lg', 'shadow-slate-200/50', 'dark:shadow-slate-950/50');
+        }
+        
+        lastScrollTop = scrollTop;
+    });
+
 
     // --- Player ---
     function initializePlayer() {
@@ -254,17 +330,21 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingState.classList.remove('hidden');
             channelsGrid.innerHTML = '';
             
-            const [channelsRes, streamsRes, blocklistRes, logosRes] = await Promise.all([
+            const [channelsRes, streamsRes, blocklistRes, logosRes, guidesRes, feedsRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/channels.json`),
                 fetch(`${API_BASE_URL}/streams.json`),
                 fetch(`${API_BASE_URL}/blocklist.json`),
-                fetch(`${API_BASE_URL}/logos.json`)
+                fetch(`${API_BASE_URL}/logos.json`),
+                fetch(`${API_BASE_URL}/guides.json`),
+                fetch(`${API_BASE_URL}/feeds.json`)
             ]);
             
             const channelsData = await channelsRes.json();
             const streamsData = await streamsRes.json();
             const blocklistData = await blocklistRes.json();
             const logosData = await logosRes.json();
+            const guidesData = await guidesRes.json();
+            const feedsData = await feedsRes.json();
 
             streams = streamsData.reduce((acc, stream) => {
                 if (!acc[stream.channel]) acc[stream.channel] = [];
@@ -279,6 +359,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return acc;
             }, {});
 
+            // Map guides and feeds by channel
+            guides = guidesData.reduce((acc, guide) => {
+                acc[guide.channel] = guide.url;
+                return acc;
+            }, {});
+
+            feeds = feedsData.reduce((acc, feed) => {
+                acc[feed.channel] = feed.url;
+                return acc;
+            }, {});
+
             channels = channelsData
                 .filter(ch => streams[ch.id])
                 .map(ch => ({ 
@@ -286,7 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     streamUrl: streams[ch.id][0].url, // Default to first stream
                     allStreams: streams[ch.id],
                     isBlocked: blocklist.has(ch.id),
-                    logo: ch.logo || externalLogos[ch.id]
+                    logo: ch.logo || externalLogos[ch.id],
+                    guide: guides[ch.id],
+                    feed: feeds[ch.id]
                 }));
 
             const [countriesRes, categoriesRes, languagesRes] = await Promise.all([
@@ -385,8 +478,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragment = document.createDocumentFragment();
         batch.forEach(channel => {
             const card = document.createElement('div');
-            card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col';
+            const isFavorite = favorites.has(channel.id);
+            card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col relative';
             card.innerHTML = `
+                <button class="favorite-btn absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 transition-all shadow-lg hover:scale-110" 
+                    data-channel-id="${channel.id}" 
+                    title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                    <i class="fas fa-heart ${isFavorite ? 'text-red-500' : ''}"></i>
+                </button>
                 <div class="h-32 flex items-center justify-center bg-white p-6 overflow-hidden relative">
                     <img class="channel-logo w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
                         src="placeholder.png" 
@@ -401,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="p-4 flex-grow">
                     <h3 class="font-bold text-sm truncate text-slate-900 dark:text-white" title="${channel.name}">${channel.name}</h3>
-                    <div class="flex items-center gap-2 mt-1">
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
                         <span class="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 capitalize">
                             ${channel.category || 'General'}
                         </span>
@@ -416,6 +515,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${channel.allStreams.length} Sources
                             </span>
                         ` : ''}
+                        ${channel.guide ? `
+                            <span class="text-[10px] px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full font-bold" title="EPG Guide Available">
+                                <i class="fas fa-tv text-[8px]"></i> Guide
+                            </span>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -424,6 +528,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.classList.add('opacity-60', 'grayscale-[0.5]');
             }
             
+            // Favorite button click handler
+            const favoriteBtn = card.querySelector('.favorite-btn');
+            favoriteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleFavorite(channel.id);
+                const icon = favoriteBtn.querySelector('i');
+                if (favorites.has(channel.id)) {
+                    icon.classList.add('text-red-500');
+                    favoriteBtn.title = 'Remove from favorites';
+                } else {
+                    icon.classList.remove('text-red-500');
+                    favoriteBtn.title = 'Add to favorites';
+                }
+            });
+            
+            // Channel card click handler
             card.addEventListener('click', () => {
                 playStream(channel.streamUrl, channel.name, channel.category, channel.logo, channel.allStreams);
             });
@@ -440,13 +560,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCountry = countryFilter.value;
         const selectedLanguage = languageFilter.value;
         const showBlocked = showBlockedToggle.checked;
+        const favoritesOnly = showFavoritesToggle.checked;
 
         const filtered = channels.filter(ch => 
             (!searchTerm || ch.name.toLowerCase().includes(searchTerm)) &&
             (!selectedCategory || ch.category === selectedCategory) &&
             (!selectedCountry || ch.country === selectedCountry) &&
             (!selectedLanguage || (ch.languages && ch.languages.includes(selectedLanguage))) &&
-            (showBlocked || !ch.isBlocked)
+            (showBlocked || !ch.isBlocked) &&
+            (!favoritesOnly || favorites.has(ch.id))
         );
         
         // Reset scroll position when filtering
@@ -455,11 +577,27 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPublicChannels(filtered);
     }
 
+    // --- Refresh Data ---
+    function refreshChannelData() {
+        const btn = refreshDataBtn.querySelector('i');
+        btn.classList.add('fa-spin');
+        refreshDataBtn.disabled = true;
+        
+        fetchPublicChannels().finally(() => {
+            setTimeout(() => {
+                btn.classList.remove('fa-spin');
+                refreshDataBtn.disabled = false;
+            }, 500);
+        });
+    }
+
     // --- Event Listeners ---
-    [searchBar, categoryFilter, countryFilter, languageFilter, showBlockedToggle].forEach(el => {
+    [searchBar, categoryFilter, countryFilter, languageFilter, showBlockedToggle, showFavoritesToggle].forEach(el => {
         el.addEventListener('input', filterAndRenderPublicChannels);
         el.addEventListener('change', filterAndRenderPublicChannels);
     });
+
+    refreshDataBtn.addEventListener('click', refreshChannelData);
 
     // --- Initial Load ---
     function initializeApp() {
@@ -467,6 +605,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadInitialSidebarState();
         initializePlayer();
         loadCustomStreams();
+        loadFavorites();
+        registerServiceWorker();
         fetchPublicChannels();
     }
 
