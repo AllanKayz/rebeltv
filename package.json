@@ -1,6 +1,6 @@
 {
   "name": "rebeltv",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A web application that allows you to browse, filter, and watch IPTV channels from around the world. This application uses the free and open-source API from [iptv-org](https://github.com/iptv-org/iptv).",
   "main": "app.js",
   "scripts": {

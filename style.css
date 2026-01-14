@@ -1,7 +1,4 @@
 /* Global Styles */
-#main-content-scroll {
-    -webkit-overflow-scrolling: touch;
-}
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {

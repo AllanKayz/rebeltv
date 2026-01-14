@@ -1,8 +1,13 @@
 {
-  "builds": [
-    { "src": "dist/output.css", "use": "@vercel/static" }
-  ],
+  "cleanUrls": true,
+  "trailingSlash": false,
   "routes": [
-    { "src": "/(.*)", "dest": "/dist/output.css" }
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
