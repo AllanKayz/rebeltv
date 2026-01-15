@@ -1,8 +1,12 @@
 {
   "builds": [
-    { "src": "dist/output.css", "use": "@vercel/static" }
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "."
+      }
+    }
   ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/dist/output.css" }
-  ]
+  "cleanUrls": true
 }
