@@ -63,6 +63,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     const itemsPerPage = 40;
 
+    // --- Convenience: loading state toggles (accessibility) ---
+    function showLoading() {
+        loadingState.classList.remove('hidden');
+        loadingState.setAttribute('aria-hidden', 'false');
+    }
+    function hideLoading() {
+        loadingState.classList.add('hidden');
+        loadingState.setAttribute('aria-hidden', 'true');
+    }
+
     // --- Sidebar Management ---
     function toggleMobileMenu() {
         sidebar.classList.toggle('hidden-mobile');
@@ -219,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             playerOverlay.classList.remove('hidden');
+            playerOverlay.setAttribute('aria-hidden', 'false');
             const type = streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
             player.src({ src: streamUrl, type });
         } else {
@@ -257,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         player.pause();
         player.src('');
         playerOverlay.classList.add('hidden');
+        playerOverlay.setAttribute('aria-hidden', 'true');
     });
 
     // --- Custom Streams ---
@@ -285,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fas fa-play-circle text-primary text-sm"></i>
                     <p class="text-xs font-semibold truncate" title="${stream.name}">${stream.name}</p>
                 </div>
-                <button class="delete-stream-btn text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2 px-1">
+                <button class="delete-stream-btn text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2 px-1" aria-label="Delete custom stream">
                     <i class="fas fa-times-circle"></i>
                 </button>
             `;
@@ -340,6 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div');
         const isFavorite = favorites.has(channel.id);
         card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col relative';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `Play ${channel.name}`);
 
         card.innerHTML = `
             <button class="favorite-btn absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:scale-105 transition-transform" 
@@ -389,8 +404,18 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.add('opacity-60', 'grayscale-[0.5]');
         }
 
-        // Favorite button click handler
+        // Favorite button accessibility
         const favoriteBtn = card.querySelector('.favorite-btn');
+        favoriteBtn.setAttribute('aria-pressed', isFavorite ? 'true' : 'false');
+        favoriteBtn.setAttribute('aria-label', isFavorite ? 'Remove from favorites' : 'Add to favorites');
+        favoriteBtn.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                favoriteBtn.click();
+            }
+        });
+
+        // Favorite button click handler
         favoriteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleFavorite(channel.id);
@@ -398,15 +423,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (favorites.has(channel.id)) {
                 icon.classList.add('text-red-500', 'active');
                 favoriteBtn.title = 'Remove from favorites';
+                favoriteBtn.setAttribute('aria-pressed', 'true');
+                favoriteBtn.setAttribute('aria-label', 'Remove from favorites');
             } else {
                 icon.classList.remove('text-red-500', 'active');
                 favoriteBtn.title = 'Add to favorites';
+                favoriteBtn.setAttribute('aria-pressed', 'false');
+                favoriteBtn.setAttribute('aria-label', 'Add to favorites');
             }
         });
         
         // Channel card click handler
         card.addEventListener('click', () => {
             playStream(channel.streamUrl, channel.name, channel.category, channel.logo, channel.allStreams);
+        });
+
+        // Keyboard accessibility for card
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                card.click();
+            }
         });
 
         return card;
@@ -431,46 +468,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!featured) return;
 
         const hero = document.createElement('section');
-        hero.className = 'w-full rounded-2xl overflow-hidden mb-6 player-overlay p-6';
+        hero.className = 'hero-card';
 
         const logo = featured.logo || 'placeholder.png';
         const country = featured.country || '';
         const category = featured.category || 'General';
 
         hero.innerHTML = `
-            <div class="flex flex-col md:flex-row items-center gap-6">
-                <div class="w-full md:w-1/3 flex items-center">
-                    <div class="w-full bg-card-900 rounded-lg p-6 flex items-center justify-center player-container">
-                        <img src="${logo}" alt="${featured.name}" onerror="this.src='placeholder.png'" class="w-full h-40 object-contain">
-                    </div>
+            <div class="hero-media">
+                <div class="player-container">
+                    <img src="${logo}" alt="${featured.name}" onerror="this.src='placeholder.png'" class="w-full h-40 object-contain">
                 </div>
-                <div class="flex-1 text-left">
-                    <div class="row mb-2">
-                        <span class="live-badge"><span class="live-dot"></span> LIVE</span>
-                    </div>
-                    <h2 class="text-2xl lg:text-4xl font-bold mb-2">${featured.name}</h2>
-                    <p class="text-muted mb-4">${category} • ${country}</p>
-                    <div class="row">
-                        <button class="btn-primary" id="hero-watch-btn">▶ WATCH NOW</button>
-                        <button class="favorite-btn ml-3 p-2 rounded-lg" id="hero-fav-btn" title="Toggle favorite"><i class="fas fa-heart ${favorites.has(featured.id) ? 'text-red-500' : ''}"></i></button>
-                    </div>
+            </div>
+            <div class="hero-info">
+                <div class="row mb-2">
+                    <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+                </div>
+                <h2 class="hero-title">${featured.name}</h2>
+                <p class="hero-meta">${category} • ${country}</p>
+                <div class="row">
+                    <button class="btn-primary" id="hero-watch-btn" aria-label="Watch ${featured.name}">▶ WATCH NOW</button>
+                    <button class="favorite-btn ml-3 p-2 rounded-lg" id="hero-fav-btn" title="Toggle favorite" aria-pressed="${favorites.has(featured.id) ? 'true' : 'false'}" aria-label="${favorites.has(featured.id) ? 'Remove from favorites' : 'Add to favorites'}"><i class="fas fa-heart ${favorites.has(featured.id) ? 'text-red-500' : ''}"></i></button>
                 </div>
             </div>
         `;
 
         heroSection.appendChild(hero);
 
-        // Hero button behavior
+        // Hero button behavior with keyboard accessibility
         const watchBtn = document.getElementById('hero-watch-btn');
         const favBtn = document.getElementById('hero-fav-btn');
+
         watchBtn.addEventListener('click', () => playStream(featured.streamUrl, featured.name, featured.category, featured.logo, featured.allStreams));
-        favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(featured.id); favBtn.querySelector('i').classList.toggle('text-red-500'); });
+        watchBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); watchBtn.click(); } });
+
+        favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(featured.id); favBtn.querySelector('i').classList.toggle('text-red-500'); favBtn.setAttribute('aria-pressed', favorites.has(featured.id) ? 'true' : 'false'); favBtn.setAttribute('aria-label', favorites.has(featured.id) ? 'Remove from favorites' : 'Add to favorites'); });
+        favBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); favBtn.click(); } });
     }
 
     // --- IPTV-ORG Channels ---
     async function fetchPublicChannels() {
         try {
-            loadingState.classList.remove('hidden');
+            showLoading();
             channelsGrid.innerHTML = '';
             if (heroSection) heroSection.innerHTML = '';
             
@@ -534,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             populateFilters(await categoriesRes.json(), await countriesRes.json(), await languagesRes.json());
             
-            loadingState.classList.add('hidden');
+            hideLoading();
 
             // Render hero then channels
             renderHero(channels);
@@ -542,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error fetching public channels:', error);
-            loadingState.classList.add('hidden');
+            hideLoading();
             channelsGrid.innerHTML = '<div class="text-center col-span-full py-20"><i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4 block"></i><p class="text-slate-500">Error loading channels. Please try again.</p></div>';
         }
     }
