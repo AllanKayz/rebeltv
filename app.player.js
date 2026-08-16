@@ -10,6 +10,42 @@ const playerBack = document.getElementById('player-back');
 let currentPlayback = { channelId: null, attemptedIndex: 0, attemptedSources: [] };
 let lastFocusedElement = null;
 
+// Transient global message (replaces alert for friendly inline messages)
+function showTransientMessage(message, timeout = 4000) {
+  let toast = document.getElementById('global-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'global-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.style.position = 'fixed';
+    toast.style.top = '12px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.zIndex = 1200;
+    toast.style.padding = '10px 14px';
+    toast.style.borderRadius = '10px';
+    toast.style.background = 'rgba(2,6,23,0.9)';
+    toast.style.color = 'white';
+    toast.style.boxShadow = '0 6px 24px rgba(2,6,23,0.6)';
+    toast.style.fontSize = '14px';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = '1';
+
+  clearTimeout(toast._timeoutId);
+  toast._timeoutId = setTimeout(() => {
+    if (toast) {
+      toast.style.transition = 'opacity 240ms ease';
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 260);
+    }
+  }, timeout);
+}
+
 function showPlayerLoading(message) {
   if (playerLoading && playerStatus) {
     playerLoading.classList.remove('hidden');
@@ -27,7 +63,7 @@ function showPlayerError() {
     playerError.classList.remove('hidden');
     playerLoading.classList.add('hidden');
     // focus retry button for accessibility
-    playerRetry.focus();
+    try { playerRetry.focus(); } catch (e) {}
   }
 }
 
@@ -40,7 +76,7 @@ function openPlayerOverlay() {
   playerOverlay.classList.remove('hidden');
   playerOverlay.setAttribute('aria-hidden', 'false');
   // focus close button
-  document.getElementById('close-player').focus();
+  try { document.getElementById('close-player').focus(); } catch (e) {}
 }
 
 function closePlayerOverlay() {
@@ -147,14 +183,23 @@ function parseHashAndOpen() {
   const id = hash.replace('#channel=', '');
   if (!id) return;
   // wait for channels to be loaded
-  if (channels.length === 0) return;
+  if (channels.length === 0) {
+    // schedule a retry after channels load
+    const unwatch = setInterval(() => {
+      if (channels.length > 0) {
+        clearInterval(unwatch);
+        parseHashAndOpen();
+      }
+    }, 250);
+    return;
+  }
   const channel = channels.find(ch => ch.id === id);
   if (channel) {
     // open player for the channel
     attemptPlayChannel(channel, 0);
   } else {
-    // invalid id — show friendly message
-    alert('Channel not found.');
+    // invalid id — show friendly inline message
+    showTransientMessage('Channel not found');
   }
 }
 
@@ -162,22 +207,30 @@ window.addEventListener('hashchange', parseHashAndOpen);
 
 // When user clicks a channel card earlier in code (createChannelCard), it calls playStream
 // Replace playStream to integrate with attemptPlayChannel and deep-link update
-const originalPlayStream = playStream;
+const originalPlayStream = window.playStream ? window.playStream : null;
 function playStream(streamUrl, name, category, logo, allStreams) {
   // Find channel by matching name+logo+streams heuristics — prefer explicit id if provided
   const channel = channels.find(ch => ch.streamUrl === streamUrl || ch.name === name || (allStreams && ch.allStreams && ch.allStreams.some(s => allStreams.some(a => a.url === s.url))));
   if (channel) {
     // update hash for deep-linking
-    window.location.hash = `channel=${channel.id}`;
+    try { window.location.hash = `channel=${channel.id}`; } catch (e) {}
     // use attemptPlayChannel which supports fallback
     attemptPlayChannel(channel, 0);
   } else {
     // fallback to original behaviour for custom streams
     openPlayerOverlay();
     showPlayerLoading();
-    originalPlayStream(streamUrl, name, category, logo, allStreams);
+    if (typeof originalPlayStream === 'function') {
+      originalPlayStream(streamUrl, name, category, logo, allStreams);
+    } else {
+      // if no original, just set source directly
+      const type = streamUrl && streamUrl.includes && streamUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
+      if (player && player.src) player.src({ src: streamUrl, type });
+    }
     // hide loading after a small delay — videojs will control playback
     setTimeout(() => hidePlayerLoading(), 1500);
   }
 }
 
+// Attempt to open any hash on startup
+setTimeout(parseHashAndOpen, 500);
