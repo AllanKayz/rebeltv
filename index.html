@@ -217,7 +217,7 @@
 
   <!-- Premium Player Overlay -->
   <div id="player-overlay"
-    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] hidden animate-fadeIn">
+    class="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] hidden animate-fadeIn" aria-hidden="true">
 
     <div class="w-full max-w-5xl px-4 flex flex-col">
       <div class="flex items-center justify-between mb-4 w-full">
@@ -246,6 +246,22 @@
       <div id="player-container"
         class="aspect-video w-full bg-black rounded-2xl shadow-3xl overflow-hidden ring-1 ring-white/10">
         <video id="video-player" class="video-js vjs-big-play-centered w-full h-full"></video>
+      </div>
+
+      <!-- Player status: loading indicator and friendly error UI -->
+      <div id="player-status" class="mt-4 text-center" aria-live="assertive">
+        <div id="player-loading" class="hidden">
+          <i class="fas fa-spinner fa-spin text-2xl text-primary"></i>
+          <p class="text-slate-400 text-sm mt-2">Connecting to stream…</p>
+        </div>
+        <div id="player-error" class="hidden">
+          <p class="text-red-400 font-semibold">STREAM UNAVAILABLE</p>
+          <p class="text-slate-400 text-sm mb-4">This channel is temporarily unavailable.</p>
+          <div class="flex items-center justify-center gap-2">
+            <button id="player-retry" class="btn-primary">TRY AGAIN</button>
+            <button id="player-back" class="rounded-lg px-3 py-2 bg-slate-700 text-white">BACK TO CHANNELS</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
