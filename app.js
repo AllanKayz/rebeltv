@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const showBlockedToggle = document.getElementById('show-blocked');
     const searchBar = document.getElementById('search-bar');
     const resultsCount = document.getElementById('results-count');
-    
+
+    const heroSection = document.getElementById('hero-section');
+
     const playerOverlay = document.getElementById('player-overlay');
     const videoPlayer = document.getElementById('video-player');
     const closePlayer = document.getElementById('close-player');
@@ -21,13 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const themeSwitcher = document.getElementById('theme-switcher');
     const htmlElement = document.documentElement;
-    
+
     const sidebar = document.getElementById('sidebar');
     const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
     const closeMobileMenu = document.getElementById('close-mobile-menu');
     const collapseSidebarBtn = document.getElementById('collapse-sidebar');
     const expandSidebarBtn = document.getElementById('expand-sidebar');
-    
+
     const toggleAddStream = document.getElementById('toggle-add-stream');
     const customStreamForm = document.getElementById('custom-stream-form');
     const customStreamNameInput = document.getElementById('custom-stream-name');
@@ -324,11 +326,153 @@ document.addEventListener('DOMContentLoaded', () => {
 
     customStreamForm.addEventListener('submit', addCustomStream);
 
+    // --- Utility: Debounce ---
+    function debounce(func, wait = 250) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // --- Channel Card Generator (centralised) ---
+    function createChannelCard(channel) {
+        const card = document.createElement('div');
+        const isFavorite = favorites.has(channel.id);
+        card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col relative';
+
+        card.innerHTML = `
+            <button class="favorite-btn absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:scale-105 transition-transform" 
+                data-channel-id="${channel.id}" 
+                title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                <i class="fas fa-heart ${isFavorite ? 'text-red-500 active' : ''}"></i>
+            </button>
+            <div class="h-32 flex items-center justify-center bg-white p-6 overflow-hidden relative">
+                <img class="channel-logo w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
+                    src="placeholder.png" 
+                    data-src="${channel.logo || 'placeholder.png'}" 
+                    alt="${channel.name}">
+                <div class="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
+                <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg">
+                        <i class="fas fa-play text-[10px]"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 flex-grow">
+                <h3 class="font-bold text-sm truncate text-slate-900 dark:text-white" title="${channel.name}">${channel.name}</h3>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                    <span class="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 capitalize">
+                        ${channel.category || 'General'}
+                    </span>
+                    ${channel.country ? `
+                        <span class="text-[10px] text-slate-400 font-medium uppercase">${channel.country}</span>
+                    ` : ''}
+                    ${channel.isBlocked ? `
+                        <span class="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-bold">Blocked</span>
+                    ` : ''}
+                    ${channel.allStreams && channel.allStreams.length > 1 ? `
+                        <span class="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">
+                            ${channel.allStreams.length} Sources
+                        </span>
+                    ` : ''}
+                    ${channel.guide ? `
+                        <span class="text-[10px] px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full font-bold" title="EPG Guide Available">
+                            <i class="fas fa-tv text-[8px]"></i> Guide
+                        </span>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        if (channel.isBlocked) {
+            card.classList.add('opacity-60', 'grayscale-[0.5]');
+        }
+
+        // Favorite button click handler
+        const favoriteBtn = card.querySelector('.favorite-btn');
+        favoriteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFavorite(channel.id);
+            const icon = favoriteBtn.querySelector('i');
+            if (favorites.has(channel.id)) {
+                icon.classList.add('text-red-500', 'active');
+                favoriteBtn.title = 'Remove from favorites';
+            } else {
+                icon.classList.remove('text-red-500', 'active');
+                favoriteBtn.title = 'Add to favorites';
+            }
+        });
+        
+        // Channel card click handler
+        card.addEventListener('click', () => {
+            playStream(channel.streamUrl, channel.name, channel.category, channel.logo, channel.allStreams);
+        });
+
+        return card;
+    }
+
+    function appendChannelBatch(batch) {
+        const fragment = document.createDocumentFragment();
+        batch.forEach(channel => {
+            const card = createChannelCard(channel);
+            fragment.appendChild(card);
+            if (logoObserver) logoObserver.observe(card);
+        });
+        channelsGrid.appendChild(fragment);
+    }
+
+    // --- Hero Renderer ---
+    function renderHero(channels) {
+        if (!heroSection) return;
+        heroSection.innerHTML = '';
+
+        const featured = channels.find(ch => ch.allStreams && ch.allStreams.length > 0 && !ch.isBlocked) || channels[0];
+        if (!featured) return;
+
+        const hero = document.createElement('section');
+        hero.className = 'w-full rounded-2xl overflow-hidden mb-6 player-overlay p-6';
+
+        const logo = featured.logo || 'placeholder.png';
+        const country = featured.country || '';
+        const category = featured.category || 'General';
+
+        hero.innerHTML = `
+            <div class="flex flex-col md:flex-row items-center gap-6">
+                <div class="w-full md:w-1/3 flex items-center">
+                    <div class="w-full bg-card-900 rounded-lg p-6 flex items-center justify-center player-container">
+                        <img src="${logo}" alt="${featured.name}" onerror="this.src='placeholder.png'" class="w-full h-40 object-contain">
+                    </div>
+                </div>
+                <div class="flex-1 text-left">
+                    <div class="row mb-2">
+                        <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+                    </div>
+                    <h2 class="text-2xl lg:text-4xl font-bold mb-2">${featured.name}</h2>
+                    <p class="text-muted mb-4">${category} • ${country}</p>
+                    <div class="row">
+                        <button class="btn-primary" id="hero-watch-btn">▶ WATCH NOW</button>
+                        <button class="favorite-btn ml-3 p-2 rounded-lg" id="hero-fav-btn" title="Toggle favorite"><i class="fas fa-heart ${favorites.has(featured.id) ? 'text-red-500' : ''}"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        heroSection.appendChild(hero);
+
+        // Hero button behavior
+        const watchBtn = document.getElementById('hero-watch-btn');
+        const favBtn = document.getElementById('hero-fav-btn');
+        watchBtn.addEventListener('click', () => playStream(featured.streamUrl, featured.name, featured.category, featured.logo, featured.allStreams));
+        favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(featured.id); favBtn.querySelector('i').classList.toggle('text-red-500'); });
+    }
+
     // --- IPTV-ORG Channels ---
     async function fetchPublicChannels() {
         try {
             loadingState.classList.remove('hidden');
             channelsGrid.innerHTML = '';
+            if (heroSection) heroSection.innerHTML = '';
             
             const [channelsRes, streamsRes, blocklistRes, logosRes, guidesRes, feedsRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/channels.json`),
@@ -391,12 +535,15 @@ document.addEventListener('DOMContentLoaded', () => {
             populateFilters(await categoriesRes.json(), await countriesRes.json(), await languagesRes.json());
             
             loadingState.classList.add('hidden');
+
+            // Render hero then channels
+            renderHero(channels);
             filterAndRenderPublicChannels();
 
         } catch (error) {
             console.error('Error fetching public channels:', error);
             loadingState.classList.add('hidden');
-            channelsGrid.innerHTML = '<div class="text-center col-span-full py-20"><i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4 block"></i><p class="text-slate-500">Error loading channels. Please try again later.</p></div>';
+            channelsGrid.innerHTML = '<div class="text-center col-span-full py-20"><i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4 block"></i><p class="text-slate-500">Error loading channels. Please try again.</p></div>';
         }
     }
 
@@ -455,8 +602,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (entry.isIntersecting) {
                     const card = entry.target;
                     const logo = card.querySelector('.channel-logo');
-                    logo.src = logo.dataset.src;
-                    logo.onerror = () => { logo.src = 'placeholder.png'; };
+                    if (logo && logo.dataset && logo.dataset.src) {
+                        logo.src = logo.dataset.src;
+                        logo.onerror = () => { logo.src = 'placeholder.png'; };
+                    }
                     observer.unobserve(card);
                 }
             });
@@ -474,86 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupSentinelObserver();
     }
 
-    function appendChannelBatch(batch) {
-        const fragment = document.createDocumentFragment();
-        batch.forEach(channel => {
-            const card = document.createElement('div');
-            const isFavorite = favorites.has(channel.id);
-            card.className = 'premium-card group channel-card-glow cursor-pointer h-full flex flex-col relative';
-            card.innerHTML = `
-                <button class="favorite-btn absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 transition-all shadow-lg hover:scale-110" 
-                    data-channel-id="${channel.id}" 
-                    title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
-                    <i class="fas fa-heart ${isFavorite ? 'text-red-500' : ''}"></i>
-                </button>
-                <div class="h-32 flex items-center justify-center bg-white p-6 overflow-hidden relative">
-                    <img class="channel-logo w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
-                        src="placeholder.png" 
-                        data-src="${channel.logo || 'placeholder.png'}" 
-                        alt="${channel.name}">
-                    <div class="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
-                    <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div class="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg">
-                            <i class="fas fa-play text-[10px]"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 flex-grow">
-                    <h3 class="font-bold text-sm truncate text-slate-900 dark:text-white" title="${channel.name}">${channel.name}</h3>
-                    <div class="flex items-center gap-2 mt-1 flex-wrap">
-                        <span class="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 capitalize">
-                            ${channel.category || 'General'}
-                        </span>
-                        ${channel.country ? `
-                            <span class="text-[10px] text-slate-400 font-medium uppercase">${channel.country}</span>
-                        ` : ''}
-                        ${channel.isBlocked ? `
-                            <span class="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-bold">Blocked</span>
-                        ` : ''}
-                        ${channel.allStreams && channel.allStreams.length > 1 ? `
-                            <span class="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">
-                                ${channel.allStreams.length} Sources
-                            </span>
-                        ` : ''}
-                        ${channel.guide ? `
-                            <span class="text-[10px] px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full font-bold" title="EPG Guide Available">
-                                <i class="fas fa-tv text-[8px]"></i> Guide
-                            </span>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-            
-            if (channel.isBlocked) {
-                card.classList.add('opacity-60', 'grayscale-[0.5]');
-            }
-            
-            // Favorite button click handler
-            const favoriteBtn = card.querySelector('.favorite-btn');
-            favoriteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleFavorite(channel.id);
-                const icon = favoriteBtn.querySelector('i');
-                if (favorites.has(channel.id)) {
-                    icon.classList.add('text-red-500');
-                    favoriteBtn.title = 'Remove from favorites';
-                } else {
-                    icon.classList.remove('text-red-500');
-                    favoriteBtn.title = 'Add to favorites';
-                }
-            });
-            
-            // Channel card click handler
-            card.addEventListener('click', () => {
-                playStream(channel.streamUrl, channel.name, channel.category, channel.logo, channel.allStreams);
-            });
-
-            fragment.appendChild(card);
-            logoObserver.observe(card);
-        });
-        channelsGrid.appendChild(fragment);
-    }
-
+    // --- Filtering & Search ---
     function filterAndRenderPublicChannels() {
         const searchTerm = searchBar.value.toLowerCase();
         const selectedCategory = categoryFilter.value;
@@ -592,9 +662,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
+    // Use debounced search for performance
+    const debouncedFilter = debounce(filterAndRenderPublicChannels, 220);
     [searchBar, categoryFilter, countryFilter, languageFilter, showBlockedToggle, showFavoritesToggle].forEach(el => {
-        el.addEventListener('input', filterAndRenderPublicChannels);
-        el.addEventListener('change', filterAndRenderPublicChannels);
+        if (el === searchBar) {
+            el.addEventListener('input', debouncedFilter);
+        } else {
+            el.addEventListener('input', filterAndRenderPublicChannels);
+            el.addEventListener('change', filterAndRenderPublicChannels);
+        }
     });
 
     refreshDataBtn.addEventListener('click', refreshChannelData);
